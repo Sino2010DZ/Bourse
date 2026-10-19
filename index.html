@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Tickglass</title>
+    <meta name="description" content="Suivi de bourse : actions, ETF et cryptos (États-Unis, Suisse, Europe). Graphiques, watchlist, portefeuille et alertes." />
+    <meta name="theme-color" content="#eef2fb" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tickglass" />
+    <script>
+      // Applique le thème avant l'affichage pour éviter un flash blanc.
+      try {
+        var c = localStorage.getItem('tg.theme') || 'system';
+        var d = c === 'dark' || (c === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = d ? 'dark' : 'light';
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
