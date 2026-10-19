@@ -9,6 +9,8 @@ interface AuthValue {
   user: User | null
   session: Session | null
   plan: Plan
+  renewsAt: string | null
+  hasBilling: boolean
   refreshPlan: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -30,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(!supabase)
   const [plan, setPlan] = useState<Plan>(guestPlan)
+  const [renewsAt, setRenewsAt] = useState<string | null>(null)
+  const [hasBilling, setHasBilling] = useState(false)
 
   const user = session?.user ?? null
 
@@ -46,10 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshPlan = async () => {
     if (!supabase || !user) {
       setPlan(guestPlan())
+      setRenewsAt(null)
+      setHasBilling(false)
       return
     }
-    const { data } = await supabase.from('profiles').select('plan').eq('id', user.id).maybeSingle()
+    const { data } = await supabase.from('profiles').select('plan,plan_renews_at,stripe_customer_id').eq('id', user.id).maybeSingle()
     setPlan(data?.plan === 'premium' ? 'premium' : 'free')
+    setRenewsAt((data?.plan_renews_at as string | null) ?? null)
+    setHasBilling(!!data?.stripe_customer_id)
   }
 
   useEffect(() => {
@@ -63,10 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     plan,
+    renewsAt,
+    hasBilling,
     refreshPlan,
     signOut: async () => { await supabase?.auth.signOut() },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [ready, user, session, plan])
+  }), [ready, user, session, plan, renewsAt, hasBilling])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

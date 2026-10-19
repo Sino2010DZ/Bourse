@@ -191,3 +191,35 @@ test('aucun défilement horizontal parasite', async ({ page }) => {
     expect(overflow, path).toBeLessThanOrEqual(0)
   }
 })
+
+test('tarifs : paiement en sommeil tant que Stripe n’est pas branché', async ({ page }) => {
+  await setup(page)
+  await page.route('**/api/billing', (r) => r.fulfill({ json: { enabled: false } }))
+  await page.goto('/pricing')
+  await expect(page.getByRole('button', { name: 'Paiement en ligne bientôt disponible' })).toBeDisabled()
+})
+
+test('tarifs : avec Stripe branché, un visiteur est invité à créer un compte', async ({ page }) => {
+  await setup(page)
+  await page.route('**/api/billing', (r) => r.fulfill({ json: { enabled: true } }))
+  await page.goto('/pricing')
+  await expect(page.getByRole('link', { name: 'Créer un compte pour s’abonner' })).toBeVisible()
+  await expect(page.getByText('Paiement sécurisé par Stripe')).toBeVisible()
+})
+
+test('hors ligne : un message prévient l’utilisateur', async ({ page, context }) => {
+  await setup(page)
+  await page.goto('/')
+  await context.setOffline(true)
+  await expect(page.getByRole('status')).toContainText('Hors ligne')
+  await context.setOffline(false)
+  await expect(page.getByRole('status')).toBeHidden()
+})
+
+test('le nom du site vient d’un seul endroit', async ({ page, request }) => {
+  await setup(page)
+  await page.goto('/')
+  await expect(page).toHaveTitle('Tradevantage')
+  expect((await (await request.get('/manifest.webmanifest')).json()).name).toBe('Tradevantage')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/og-image.png')
+})

@@ -1,10 +1,12 @@
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { Icon, type IconName } from './Icon'
 import { Logo } from './Logo'
 import { LangButton, ThemeButton } from './Toggles'
 import { CookieBanner } from './CookieBanner'
 import { InstallBanner } from './InstallBanner'
+import { ErrorBoundary } from './ErrorBoundary'
+import { OfflineBanner } from './OfflineBanner'
 import { openConsentSettings } from '../lib/consent'
 import { APP_NAME } from '../config'
 import type { MessageKey } from '../i18n'
@@ -19,6 +21,7 @@ const NAV: { to: string; icon: IconName; label: MessageKey }[] = [
 
 export function Layout() {
   const { t } = useI18n()
+  const { pathname } = useLocation()
   return (
     <div className="app">
       <div className="bg-orbs" aria-hidden="true"><span /><span /><span /></div>
@@ -45,8 +48,9 @@ export function Layout() {
       </div>
 
       <main className="main">
+        <OfflineBanner />
         <InstallBanner />
-        <Outlet />
+        <ErrorBoundary resetKey={pathname}><Outlet /></ErrorBoundary>
         <footer className="footer">
           <p className="footer-warn">{t('disclaimer')}</p>
           <p>{t('footer.data')} {t('watchlist.delayed')}.</p>

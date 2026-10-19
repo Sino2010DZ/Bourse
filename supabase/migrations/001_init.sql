@@ -9,6 +9,7 @@ create table if not exists public.profiles (
   plan text not null default 'free' check (plan in ('free', 'premium')),
   plan_renews_at timestamptz,
   stripe_customer_id text unique,
+  stripe_subscription_id text,
   locale text not null default 'fr',
   created_at timestamptz not null default now()
 );

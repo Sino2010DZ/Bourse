@@ -1,5 +1,5 @@
 {
-  "name": "tickglass",
+  "name": "tradevantage",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "icons": "node scripts/make-icons.mjs",
+    "icons": "node --experimental-strip-types scripts/make-icons.mjs",
     "check-secrets": "node scripts/check-secrets.mjs"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
+    "stripe": "^23.0.0",
     "web-push": "^3.6.7",
     "workbox-core": "^7.4.1",
     "workbox-precaching": "^7.4.1",

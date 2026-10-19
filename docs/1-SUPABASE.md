@@ -7,7 +7,7 @@ L’offre gratuite suffit pour commencer.
 
 1. Allez sur **https://supabase.com** → **Start your project** → connectez-vous avec GitHub.
 2. Cliquez **New project**.
-   - **Name** : `tickglass`
+   - **Name** : `tradevantage`
    - **Database password** : cliquez *Generate*, puis gardez-le dans un endroit sûr.
    - **Region** : **Central EU (Frankfurt)**. C’est important : les données restent en Europe (nLPD et RGPD).
 3. Cliquez **Create new project** et attendez environ 2 minutes.

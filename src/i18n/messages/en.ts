@@ -153,6 +153,13 @@ export const en: Messages = {
     premiumF4: 'No ads',
     current: 'Your current plan',
     soon: 'Online payment coming soon',
+    subscribe: 'Subscribe',
+    loginToSubscribe: 'Create an account to subscribe',
+    manage: 'Manage my subscription',
+    success: 'Thank you! Your Premium subscription is being activated…',
+    active: 'Premium activated. Thank you!',
+    renews: 'Renews on {date}',
+    secure: 'Secure payment by Stripe. Cancel anytime.',
   },
   cookies: {
     title: 'Cookies',
@@ -180,4 +187,9 @@ export const en: Messages = {
     button: 'Install',
   },
   notFound: 'Page not found.',
+  offline: 'Offline: prices are no longer updating.',
+  crash: {
+    title: 'Oops, something went wrong.',
+    reload: 'Reload the page',
+  },
 }

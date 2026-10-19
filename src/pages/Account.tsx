@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useI18n, LANGUAGES, type Lang } from '../i18n'
 import { useAuth } from '../context/AuthContext'
 import { useTheme, type ThemeChoice } from '../context/ThemeContext'
@@ -7,10 +8,31 @@ import { NotificationsControl } from './Alerts'
 import { isStandalone } from '../lib/push'
 import { openConsentSettings } from '../lib/consent'
 import { supabase } from '../lib/supabase'
+import { openPortal } from '../lib/billing'
 
 export function Account() {
-  const { t, lang, setLang } = useI18n()
-  const { user, plan, configured, signOut, session } = useAuth()
+  const { t, lang, setLang, intl } = useI18n()
+  const { user, plan, configured, signOut, session, renewsAt, hasBilling, refreshPlan } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const [waiting, setWaiting] = useState(params.get('checkout') === 'success')
+
+  // Retour de Stripe : on attend que le serveur ait reçu la confirmation de paiement.
+  useEffect(() => {
+    if (!waiting) return
+    if (plan === 'premium') {
+      setWaiting(false)
+      setParams({}, { replace: true })
+      return
+    }
+    const timer = window.setInterval(() => void refreshPlan(), 2000)
+    const stop = window.setTimeout(() => setWaiting(false), 60_000)
+    return () => { window.clearInterval(timer); window.clearTimeout(stop) }
+  }, [waiting, plan, refreshPlan, setParams])
+
+  const manage = async () => {
+    if (!session) return
+    try { window.location.href = await openPortal(session) } catch { alert(t('common.error')) }
+  }
   const { choice, setChoice } = useTheme()
   const install = useInstallPrompt()
 
@@ -31,7 +53,14 @@ export function Account() {
             <p><strong>{user.email}</strong></p>
             <p>{t('account.plan')} : <span className={`badge ${plan === 'premium' ? 'on' : ''}`}>{plan === 'premium' ? t('common.premium') : t('common.free')}</span>
               {plan === 'free' && <> · <Link to="/pricing">{t('common.upgrade')}</Link></>}</p>
-            <button className="btn" onClick={() => void signOut()}>{t('auth.logout')}</button>
+            {waiting && <p className="notice">{t('pricing.success')}</p>}
+            {plan === 'premium' && params.get('checkout') === null && renewsAt && (
+              <p className="muted small">{t('pricing.renews', { date: new Date(renewsAt).toLocaleDateString(intl) })}</p>
+            )}
+            <div className="actions">
+              {hasBilling && <button className="btn" onClick={() => void manage()}>{t('pricing.manage')}</button>}
+              <button className="btn" onClick={() => void signOut()}>{t('auth.logout')}</button>
+            </div>
           </>
         ) : (
           <>

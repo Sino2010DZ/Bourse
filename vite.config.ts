@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { APP_DESCRIPTION_FR, APP_NAME } from './src/brand.ts'
 
 export default defineConfig({
   build: {
@@ -13,6 +14,11 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Remplace %APP_NAME% et %APP_DESCRIPTION% dans index.html.
+    {
+      name: 'brand-html',
+      transformIndexHtml: (html) => html.replaceAll('%APP_NAME%', APP_NAME).replaceAll('%APP_DESCRIPTION%', APP_DESCRIPTION_FR),
+    },
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -21,9 +27,9 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['logo.svg', 'icons/apple-touch-icon.png'],
       manifest: {
-        name: 'Tickglass',
-        short_name: 'Tickglass',
-        description: 'Suivi de bourse : actions, ETF et cryptos.',
+        name: APP_NAME,
+        short_name: APP_NAME,
+        description: APP_DESCRIPTION_FR,
         lang: 'fr',
         start_url: '/',
         scope: '/',

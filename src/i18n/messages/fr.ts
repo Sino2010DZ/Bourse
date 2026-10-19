@@ -153,6 +153,13 @@ export const fr = {
     premiumF4: 'Sans publicité',
     current: 'Votre plan actuel',
     soon: 'Paiement en ligne bientôt disponible',
+    subscribe: 'S’abonner',
+    loginToSubscribe: 'Créer un compte pour s’abonner',
+    manage: 'Gérer mon abonnement',
+    success: 'Merci ! Votre abonnement Premium est en cours d’activation…',
+    active: 'Premium activé. Merci !',
+    renews: 'Renouvellement le {date}',
+    secure: 'Paiement sécurisé par Stripe. Résiliable à tout moment.',
   },
   cookies: {
     title: 'Cookies',
@@ -180,6 +187,11 @@ export const fr = {
     button: 'Installer',
   },
   notFound: 'Page introuvable.',
+  offline: 'Hors ligne : les prix ne sont plus mis à jour.',
+  crash: {
+    title: 'Oups, un problème est survenu.',
+    reload: 'Recharger la page',
+  },
 }
 
 type DeepStrings<T> = { [K in keyof T]: T[K] extends string ? string : DeepStrings<T[K]> }

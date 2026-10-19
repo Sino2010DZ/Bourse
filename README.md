@@ -1,4 +1,4 @@
-# Tickglass — suivi de bourse (PWA)
+# Tradevantage — suivi de bourse (PWA)
 
 Plateforme web de suivi des marchés : actions et ETF (États-Unis, Suisse SIX, Europe) et cryptos.
 Un seul site pour PC, Mac et iPhone, installable comme une vraie app.
@@ -20,7 +20,9 @@ Un seul site pour PC, Mac et iPhone, installable comme une vraie app.
 | Mode clair / sombre, design « verre » | ✅ |
 | App installable (PWA), iPhone compris | ✅ |
 | Message d’avertissement, CGU, confidentialité, bandeau cookies | ✅ |
-| Paiement Stripe et publicité AdSense | ⏳ à la fin, avec le vrai nom de domaine |
+| Paiement Stripe (abonnement mensuel / annuel, espace client) | ✅ codé, s’active avec les clés |
+| Publicité AdSense (plan gratuit, après consentement) | ✅ codé, s’active avec le domaine |
+| Tests automatiques sur GitHub à chaque modification | ✅ |
 
 \* Le calcul des gains et la surveillance des alertes ont besoin d’une source de prix
 **côté serveur** (voir [docs/DONNEES.md](docs/DONNEES.md)). Sans elle, les prix restent
@@ -33,6 +35,8 @@ affichés par TradingView, mais les totaux et les alertes attendent.
 3. [Activer les notifications d’alertes](docs/3-NOTIFICATIONS.md)
 4. [Les données de marché et leur licence](docs/DONNEES.md)
 5. [Plus tard : nom de domaine, Stripe, AdSense](docs/4-PLUS-TARD.md)
+6. [E-mails de connexion en français et anglais](docs/5-EMAILS.md)
+7. [Mail prêt à envoyer à EODHD (licence des données)](docs/MAIL-EODHD.md)
 
 ## Pour les développeurs
 
@@ -53,10 +57,9 @@ src/                 le site (React)
   components/        les morceaux réutilisables (widgets, recherche, watchlist…)
   lib/symbols.ts     le catalogue des valeurs proposées
   config.ts          nom du site, limites des plans, prix, infos légales
-netlify/functions/   le serveur (prix en cache, alertes chaque minute, suppression de compte)
+netlify/functions/   le serveur (prix en cache, alertes chaque minute, paiements, suppression de compte)
 supabase/migrations/ la structure de la base de données et ses règles de sécurité
 tests/               tests automatiques
 ```
 
-**Changer le nom du site** : `APP_NAME` dans `src/config.ts`, le manifeste dans
-`vite.config.ts` et le titre dans `index.html`.
+**Changer le nom du site** : une seule ligne, dans `src/brand.ts`.

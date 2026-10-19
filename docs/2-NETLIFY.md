@@ -38,7 +38,7 @@ Cliquez **Deploy**. Après 1 à 2 minutes, le statut passe à **Published**.
 ## E. Choisir le nom de l’adresse
 
 **Project configuration → General → Project details → Change project name** →
-tapez par exemple `tickglass` → votre site devient **https://tickglass.netlify.app**.
+tapez par exemple `tradevantage` → votre site devient **https://tradevantage.netlify.app**.
 
 👉 Retournez ensuite dans Supabase, étape **D** du guide 1, pour indiquer cette adresse.
 
@@ -46,7 +46,7 @@ tapez par exemple `tickglass` → votre site devient **https://tickglass.netlify
 
 1. Ouvrez l’adresse dans **Safari**.
 2. Touchez **Partager** (le carré avec la flèche) → **Sur l’écran d’accueil** → **Ajouter**.
-3. L’icône Tickglass apparaît comme une vraie app.
+3. L’icône Tradevantage apparaît comme une vraie app.
 
 Sur PC ou Mac (Chrome, Edge), une petite icône « Installer » apparaît dans la barre d’adresse.
 

@@ -1,7 +1,6 @@
 // Réglages généraux de l'application.
-// Pour changer le nom du site, modifiez APP_NAME (et le manifeste dans vite.config.ts).
-
-export const APP_NAME = 'Tickglass'
+// Le nom du site se change dans src/brand.ts.
+export { APP_NAME } from './brand'
 
 export type Plan = 'free' | 'premium'
 

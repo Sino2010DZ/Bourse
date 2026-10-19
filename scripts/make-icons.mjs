@@ -19,3 +19,18 @@ for (const [name, size, pad, solid] of jobs) {
 }
 await browser.close()
 console.log('Icônes générées')
+
+// Image d'aperçu pour le partage du lien (WhatsApp, LinkedIn, X…).
+{
+  const { APP_NAME } = await import('../src/brand.ts').catch(() => ({ APP_NAME: 'Tradevantage' }))
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined })
+  const p = await b.newPage({ viewport: { width: 1200, height: 630 } })
+  await p.setContent(`<body style="margin:0;width:1200px;height:630px;display:flex;align-items:center;gap:56px;padding:0 96px;box-sizing:border-box;
+    font-family:-apple-system,Segoe UI,Inter,Arial,sans-serif;color:#fff;background:radial-gradient(circle at 15% 20%,#3b6cff 0,transparent 55%),radial-gradient(circle at 85% 70%,#7a3cff 0,transparent 55%),radial-gradient(circle at 50% 110%,#14c8a8 0,transparent 50%),#0b1020">
+    <div style="width:220px;height:220px;flex:none">${svg.replace('<svg ', '<svg width="220" height="220" ')}</div>
+    <div><div style="font-size:96px;font-weight:800;letter-spacing:-3px">${APP_NAME}</div>
+    <div style="font-size:36px;opacity:.85;margin-top:8px">Actions · ETF · Cryptos</div>
+    <div style="font-size:28px;opacity:.65;margin-top:6px">USA · Suisse · Europe</div></div></body>`)
+  await p.screenshot({ path: 'public/og-image.png' })
+  await b.close()
+}
