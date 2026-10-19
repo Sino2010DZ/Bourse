@@ -8,10 +8,10 @@ import { InstallBanner } from './InstallBanner'
 import { ErrorBoundary } from './ErrorBoundary'
 import { OfflineBanner } from './OfflineBanner'
 import { openConsentSettings } from '../lib/consent'
-import { APP_NAME } from '../config'
+import { APP_NAME, premiumModeActive } from '../config'
 import type { MessageKey } from '../i18n'
 
-const NAV: { to: string; icon: IconName; label: MessageKey }[] = [
+const ALL_NAV: { to: string; icon: IconName; label: MessageKey }[] = [
   { to: '/', icon: 'markets', label: 'nav.markets' },
   { to: '/portfolio', icon: 'portfolio', label: 'nav.portfolio' },
   { to: '/alerts', icon: 'alerts', label: 'nav.alerts' },
@@ -21,6 +21,7 @@ const NAV: { to: string; icon: IconName; label: MessageKey }[] = [
 
 export function Layout() {
   const { t } = useI18n()
+  const NAV = premiumModeActive() ? ALL_NAV : ALL_NAV.filter((n) => n.to !== '/pricing')
   const { pathname } = useLocation()
   return (
     <div className="app">
@@ -63,7 +64,7 @@ export function Layout() {
         </footer>
       </main>
 
-      <nav className="tabbar glass" aria-label="Navigation">
+      <nav className="tabbar glass" aria-label="Navigation" style={{ gridTemplateColumns: `repeat(${NAV.length}, 1fr)` }}>
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className="tab-link">
             <Icon name={n.icon} size={22} />

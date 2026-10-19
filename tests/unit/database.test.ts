@@ -41,6 +41,22 @@ describe('base de données', () => {
     await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${A}', '{"locale":"en"}'), ('${B}', '{}')`)
   })
 
+  it('par défaut, tout est gratuit : pas de limite, portefeuille et alertes ouverts', async () => {
+    const C = '00000000-0000-0000-0000-00000000000c'
+    await db.query(`insert into auth.users (id) values ($1)`, [C])
+    for (let i = 0; i < 7; i++) await as(C, `insert into watchlist_items (symbol) values ($1)`, [`SIX:T${i}`])
+    await as(C, `insert into positions (symbol, quantity, buy_price) values ('SIX:NESN', 1, 80)`)
+    await as(C, `insert into price_alerts (symbol, direction, target) values ('SIX:NESN', 'above', 100)`)
+    expect((await as(C, `select count(*)::int as n from watchlist_items`)).rows[0]).toEqual({ n: 7 })
+    // On passe en mode Premium payant pour vérifier les règles des deux plans.
+    await db.query(`update app_settings set all_features_free = false`)
+  })
+
+  it('personne ne peut changer l’interrupteur depuis le navigateur', async () => {
+    await as(A, `update app_settings set all_features_free = true`)
+    expect((await db.query<{ f: boolean }>(`select all_features_free as f from app_settings`)).rows[0].f).toBe(false)
+  })
+
   it('crée un profil gratuit à l’inscription', async () => {
     const { rows } = await db.query<{ plan: string; locale: string }>(`select plan, locale from profiles where id = $1`, [A])
     expect(rows[0]).toEqual({ plan: 'free', locale: 'en' })

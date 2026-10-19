@@ -5,6 +5,15 @@ Un seul site pour PC, Mac et iPhone, installable comme une vraie app.
 
 > **Informations non contractuelles, ceci n’est pas un conseil en investissement.**
 
+## Tout est gratuit pour l’instant
+
+Toutes les fonctions sont ouvertes à tout le monde (watchlist illimitée, portefeuille,
+alertes), sans publicité ni page Premium. Le code du Premium payant est gardé « en pause ».
+
+**Pour vendre le Premium plus tard**, deux interrupteurs :
+1. `ALL_FEATURES_FREE = false` dans `src/config.ts` ;
+2. dans Supabase : **Table Editor → app_settings → all_features_free = false**.
+
 ## Ce qui est prêt
 
 | Fonction | État |

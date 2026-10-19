@@ -223,3 +223,21 @@ test('le nom du site vient d’un seul endroit', async ({ page, request }) => {
   expect((await (await request.get('/manifest.webmanifest')).json()).name).toBe('Tradevantage')
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/og-image.png')
 })
+
+test('mode « tout gratuit » : toutes les fonctions ouvertes, sans page Premium', async ({ page }) => {
+  await setup(page, { allFree: true })
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Premium' })).toHaveCount(0)
+  const wl = page.locator('.watchlist').first()
+  for (const q of ['nestle', 'apple', 'roche', 'novartis', 'nvidia', 'tesla', 'sap']) {
+    await wl.getByRole('combobox').fill(q)
+    await page.getByRole('option').first().getByRole('button').click()
+  }
+  await expect(wl.locator('.wl-row')).toHaveCount(7)
+  await page.goto('/portfolio')
+  await expect(page.getByRole('button', { name: 'Ajouter une position' })).toBeVisible()
+  await page.goto('/alerts')
+  await expect(page.getByRole('button', { name: 'Créer l’alerte' })).toBeVisible()
+  await page.goto('/pricing')
+  await expect(page).toHaveURL(/\/$/)
+})

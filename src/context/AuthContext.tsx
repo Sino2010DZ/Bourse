@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { env, type Plan } from '../config'
+import { env, premiumModeActive, type Plan } from '../config'
 
 interface AuthValue {
   configured: boolean
@@ -70,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ready,
     user,
     session,
-    plan,
+    // Tout gratuit : chacun a accès à toutes les fonctions.
+    plan: premiumModeActive() ? plan : 'premium',
     renewsAt,
     hasBilling,
     refreshPlan,

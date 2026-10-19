@@ -4,6 +4,13 @@ export { APP_NAME } from './brand'
 
 export type Plan = 'free' | 'premium'
 
+// INTERRUPTEUR DU PREMIUM
+// true  = tout est gratuit pour tout le monde (watchlist illimitée, portefeuille,
+//         alertes), sans publicité ni page Premium.
+// false = plans Gratuit / Premium payant (Stripe). Pensez aussi à passer
+//         « all_features_free » à false dans Supabase (table app_settings).
+export const ALL_FEATURES_FREE = true
+
 // Attention : la limite de 5 est aussi écrite dans supabase/migrations/001_init.sql
 export const PLAN_LIMITS = {
   free: { watchlist: 5, alerts: false, portfolio: false, ads: true },
@@ -25,6 +32,14 @@ export const env = {
   adsenseClient: import.meta.env.VITE_ADSENSE_CLIENT as string | undefined,
   // Débloque Premium en mode invité, uniquement pour les tests locaux.
   testHooks: import.meta.env.DEV || import.meta.env.VITE_E2E === '1',
+}
+
+// Le mode Premium payant est-il actif ? (Les tests peuvent le forcer.)
+export function premiumModeActive(): boolean {
+  try {
+    if (env.testHooks && localStorage.getItem('tg.premiumMode') === '1') return true
+  } catch { /* ignore */ }
+  return !ALL_FEATURES_FREE
 }
 
 // À compléter avant l'ouverture au public (utilisé dans les pages légales).

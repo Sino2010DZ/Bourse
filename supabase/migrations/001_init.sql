@@ -35,9 +35,20 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users for each row execute function public.handle_new_user();
 
+-- ---------- Interrupteur « tout gratuit » ----------
+-- all_features_free = true : tout le monde a accès à tout (comme src/config.ts).
+-- Pour vendre le Premium plus tard : Table Editor → app_settings → false.
+create table if not exists public.app_settings (
+  id boolean primary key default true check (id),
+  all_features_free boolean not null default true
+);
+insert into public.app_settings (id) values (true) on conflict (id) do nothing;
+alter table public.app_settings enable row level security;
+
 create or replace function public.is_premium(uid uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select plan = 'premium' from public.profiles where id = uid), false)
+  select coalesce((select all_features_free from public.app_settings where id), false)
+      or coalesce((select plan = 'premium' from public.profiles where id = uid), false)
 $$;
 
 -- ---------- Watchlist ----------

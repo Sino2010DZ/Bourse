@@ -20,11 +20,12 @@ export async function blockTradingView(page: Page) {
   await page.route(/tradingview/, (route) => route.abort())
 }
 
-export async function setup(page: Page, opts: { premium?: boolean; consent?: boolean; quotes?: boolean } = {}) {
+export async function setup(page: Page, opts: { premium?: boolean; consent?: boolean; quotes?: boolean; allFree?: boolean } = {}) {
   await blockTradingView(page)
   await mockQuotes(page, opts.quotes ?? true)
-  await page.addInitScript(({ premium, consent }) => {
+  await page.addInitScript(({ premium, consent, allFree }) => {
+    if (!allFree) localStorage.setItem('tg.premiumMode', '1')
     if (premium) localStorage.setItem('tg.devPremium', '1')
     if (consent) localStorage.setItem('tg.consent', JSON.stringify({ ads: false, date: new Date().toISOString(), version: 1 }))
-  }, { premium: !!opts.premium, consent: opts.consent ?? true })
+  }, { premium: !!opts.premium, consent: opts.consent ?? true, allFree: !!opts.allFree })
 }

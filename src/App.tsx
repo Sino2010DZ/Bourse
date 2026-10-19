@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { premiumModeActive } from './config'
 import { I18nProvider } from './i18n'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
@@ -35,7 +36,7 @@ export default function App() {
                   <Route path="portfolio" element={<Portfolio />} />
                   <Route path="alerts" element={<Alerts />} />
                   <Route path="account" element={<Account />} />
-                  <Route path="pricing" element={<Pricing />} />
+                  <Route path="pricing" element={premiumModeActive() ? <Pricing /> : <Navigate to="/" replace />} />
                   <Route path="login" element={<Login />} />
                   <Route path="signup" element={<Signup />} />
                   <Route path="forgot-password" element={<ForgotPassword />} />

@@ -8,6 +8,7 @@ import { NotificationsControl } from './Alerts'
 import { isStandalone } from '../lib/push'
 import { openConsentSettings } from '../lib/consent'
 import { supabase } from '../lib/supabase'
+import { premiumModeActive } from '../config'
 import { openPortal } from '../lib/billing'
 
 export function Account() {
@@ -51,8 +52,8 @@ export function Account() {
         {user ? (
           <>
             <p><strong>{user.email}</strong></p>
-            <p>{t('account.plan')} : <span className={`badge ${plan === 'premium' ? 'on' : ''}`}>{plan === 'premium' ? t('common.premium') : t('common.free')}</span>
-              {plan === 'free' && <> · <Link to="/pricing">{t('common.upgrade')}</Link></>}</p>
+            {premiumModeActive() && <p>{t('account.plan')} : <span className={`badge ${plan === 'premium' ? 'on' : ''}`}>{plan === 'premium' ? t('common.premium') : t('common.free')}</span>
+              {plan === 'free' && <> · <Link to="/pricing">{t('common.upgrade')}</Link></>}</p>}
             {waiting && <p className="notice">{t('pricing.success')}</p>}
             {plan === 'premium' && params.get('checkout') === null && renewsAt && (
               <p className="muted small">{t('pricing.renews', { date: new Date(renewsAt).toLocaleDateString(intl) })}</p>
@@ -64,7 +65,7 @@ export function Account() {
           </>
         ) : (
           <>
-            <p>{t('account.plan')} : <span className="badge">{plan === 'premium' ? t('common.premium') : t('account.guest')}</span></p>
+            <p>{t('account.plan')} : <span className="badge">{premiumModeActive() && plan === 'premium' ? t('common.premium') : t('account.guest')}</span></p>
             <p className="muted small">{t('auth.guestNote')}</p>
             {configured ? (
               <div className="actions">
