@@ -39,6 +39,7 @@ affichés par TradingView, mais les totaux et les alertes attendent.
 
 ## Guides (en français simple)
 
+0. [Faire tourner le site sur votre ordinateur](docs/0-EN-LOCAL.md) — double-clic sur `Demarrer-Windows.bat` ou `Demarrer-Mac.command`
 1. [Créer la base de données Supabase](docs/1-SUPABASE.md)
 2. [Mettre le site en ligne sur Netlify](docs/2-NETLIFY.md)
 3. [Activer les notifications d’alertes](docs/3-NOTIFICATIONS.md)
