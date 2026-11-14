@@ -93,6 +93,8 @@ async function demarrer() {
     $("modele-chef").textContent = `JARVIS · ${sante.modele_grand_chef}`;
     afficherSections(await api("/api/sections"));
     afficherConso(await api("/api/consommation"));
+    chargerActions();
+    setInterval(chargerActions, 5 * 60 * 1000); // toutes les 5 minutes
     ajouterBulle(
       sante.cle_api
         ? "Bonjour Monsieur. Tous les systèmes sont opérationnels. Que puis-je faire pour vous ?"
@@ -124,9 +126,10 @@ async function envoyer(e) {
   try {
     const r = await api("/api/chat", { method: "POST", body: JSON.stringify({ message: texte }) });
     attente.remove();
+    const aides = r.intervenants.length > 1 ? ` · ${r.intervenants.length} appels` : "";
     const meta = r.erreur
       ? ""
-      : `${(r.duree_ms / 1000).toFixed(1)} s · ${(r.tokens_entree + r.tokens_sortie).toLocaleString("fr-CH")} tokens · ${r.cout_usd.toFixed(4)} $`;
+      : `${(r.duree_ms / 1000).toFixed(1)} s${aides} · ${r.tokens.toLocaleString("fr-CH")} tokens · ${r.cout_usd.toFixed(4)} $`;
     ajouterBulle(r.reponse, "chef", { meta, erreur: r.erreur });
     afficherConso(r.consommation);
   } catch {
@@ -148,6 +151,105 @@ champ.addEventListener("input", ajusterHauteur);
 champ.addEventListener("keydown", (e) => {
   // Entrée = envoyer ; Maj+Entrée = nouvelle ligne
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing) envoyer(e);
+});
+
+// ------------------------------------------------------------ Carte « Mes actions »
+
+const fmt = (n, dec = 2) => n.toLocaleString("fr-CH", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const signe = (n) => (n > 0 ? "+" : "") + fmt(n);
+const devise = (d) => (d === "GBp" ? "p" : d);
+
+function el(tag, classe, texte) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texte !== undefined) e.textContent = texte;
+  return e;
+}
+
+async function chargerActions() {
+  const zone = $("actions-contenu");
+  try {
+    const res = await api("/api/bourse/mes-actions");
+    zone.className = "";
+    const lignes = res.positions.map((p) => {
+      const ligne = el("div", "ligne-action");
+      ligne.title = p.date_cours ? `Cours du ${p.date_cours}` : "";
+      ligne.append(el("div", "nom-action", p.nom));
+      ligne.append(el("div", "prix", p.prix == null ? "—" : `${fmt(p.prix)} ${devise(p.devise)}`));
+      const detail = p.valeur_chf != null
+        ? `${fmt(p.quantite, 0)} pièces · ${fmt(p.valeur_chf)} CHF` + (p.gain_pct != null ? ` · ${signe(p.gain_pct)} %` : "")
+        : p.ticker;
+      ligne.append(el("div", "detail", detail));
+      const v = p.variation_jour_pct;
+      ligne.append(el("div", "var " + (v > 0 ? "hausse" : v < 0 ? "baisse" : ""), v == null ? "" : `${signe(v)} %`));
+      return ligne;
+    });
+    zone.replaceChildren(...lignes);
+    if (res.positions.some((p) => p.valeur_chf != null)) {
+      const total = el("div", "total-actions");
+      total.append(el("span", "", "Total"), el("span", "", `${fmt(res.valeur_totale_chf)} CHF`));
+      zone.append(total);
+    }
+  } catch {
+    zone.className = "carte-vide";
+    zone.textContent = "Cours indisponibles pour le moment.";
+  }
+}
+
+async function ouvrirFormulaire() {
+  const pf = await api("/api/portefeuille");
+  const champs = $("actions-champs");
+  champs.replaceChildren(
+    ...pf.positions.map((p, i) => {
+      const fs = el("fieldset");
+      fs.append(el("legend", "", `${p.nom} (${p.ticker})`));
+      for (const [cle, libelle] of [["quantite", "Quantité"], ["prix_achat", `Prix d'achat (${devise(p.devise)})`]]) {
+        const label = el("label", "", libelle);
+        const input = el("input");
+        input.type = "number"; input.min = "0"; input.step = "any";
+        input.dataset.index = i; input.dataset.cle = cle;
+        input.value = p[cle] ?? "";
+        label.append(input);
+        fs.append(label);
+      }
+      return fs;
+    })
+  );
+  $("actions-formulaire").dataset.portefeuille = JSON.stringify(pf);
+  $("actions-erreur").textContent = "";
+  $("actions-contenu").hidden = true;
+  $("actions-formulaire").hidden = false;
+}
+
+function fermerFormulaire() {
+  $("actions-formulaire").hidden = true;
+  $("actions-contenu").hidden = false;
+}
+
+$("modifier-actions").addEventListener("click", ouvrirFormulaire);
+$("annuler-actions").addEventListener("click", fermerFormulaire);
+$("actions-formulaire").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const formulaire = e.currentTarget;
+  const pf = JSON.parse(formulaire.dataset.portefeuille);
+  for (const input of formulaire.querySelectorAll("input")) {
+    pf.positions[input.dataset.index][input.dataset.cle] = input.value === "" ? null : Number(input.value);
+  }
+  try {
+    const r = await fetch(API + "/api/portefeuille", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pf),
+    });
+    if (!r.ok) {
+      $("actions-erreur").textContent = (await r.json()).detail || "Erreur.";
+      return;
+    }
+    fermerFormulaire();
+    chargerActions();
+  } catch {
+    $("actions-erreur").textContent = "Serveur injoignable.";
+  }
 });
 
 demarrer();

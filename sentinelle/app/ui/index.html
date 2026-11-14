@@ -48,9 +48,21 @@
 
     <!-- À droite : cartes rapides -->
     <aside class="panneau cartes">
-      <section class="carte">
-        <div class="carte-titre">📈 Mes actions</div>
-        <div class="carte-vide">Arrive en Phase 2 (section Bourse).</div>
+      <section class="carte" id="carte-actions">
+        <div class="carte-entete">
+          <div class="carte-titre">📈 Mes actions</div>
+          <button class="lien" id="modifier-actions" type="button">Modifier</button>
+        </div>
+        <div id="actions-contenu" class="carte-vide">Chargement des cours…</div>
+        <form id="actions-formulaire" class="actions-formulaire" hidden>
+          <div id="actions-champs"></div>
+          <div class="formulaire-actions">
+            <button type="button" class="lien" id="annuler-actions">Annuler</button>
+            <button type="submit" class="bouton-petit">Enregistrer</button>
+          </div>
+          <div class="formulaire-erreur" id="actions-erreur"></div>
+        </form>
+        <div class="carte-note">Cours Yahoo Finance · information seulement, pas un conseil.</div>
       </section>
       <section class="carte">
         <div class="carte-titre">💰 Dernière alerte de prix</div>

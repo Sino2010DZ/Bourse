@@ -56,3 +56,54 @@ class Journal:
             "tokens_sortie": sum(e["tokens_sortie"] for e in entrees),
             "cout_usd": round(sum(e["cout_usd"] for e in entrees), 4),
         }
+
+
+class Trace:
+    """Suit une demande de Monsieur à travers tous les niveaux (Grand Chef, commandants, agents).
+
+    Chaque appel à Claude est noté dans le journal, et la trace additionne tokens et coût.
+    """
+
+    def __init__(self, journal: Journal) -> None:
+        self.journal = journal
+        self.etapes: list[dict] = []
+
+    def noter(self, qui: str, demande: str, reponse) -> None:
+        entree = Entree(
+            qui=qui,
+            demande=demande,
+            reponse=reponse.texte,
+            modele=reponse.modele,
+            duree_ms=reponse.duree_ms,
+            tokens_entree=reponse.tokens_entree,
+            tokens_sortie=reponse.tokens_sortie,
+            cout_usd=reponse.cout_usd,
+            erreur=reponse.erreur,
+        )
+        self.journal.noter(entree)
+        self.etapes.append(
+            {
+                "qui": qui,
+                "duree_ms": reponse.duree_ms,
+                "tokens": reponse.tokens_entree + reponse.tokens_sortie,
+                "cout_usd": reponse.cout_usd,
+                "erreur": reponse.erreur,
+            }
+        )
+
+    def total(self) -> dict:
+        return {
+            "appels": len(self.etapes),
+            "tokens": sum(e["tokens"] for e in self.etapes),
+            "cout_usd": round(sum(e["cout_usd"] for e in self.etapes), 6),
+            "intervenants": [e["qui"] for e in self.etapes],
+        }
+
+
+JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+
+def maintenant_texte() -> str:
+    """Ex. « samedi 14.11.2026, 18:05 (heure de Zurich) »."""
+    m = datetime.now(FUSEAU)
+    return f"{JOURS[m.weekday()]} {m:%d.%m.%Y, %H:%M} (heure de Zurich)"

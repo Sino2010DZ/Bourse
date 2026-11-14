@@ -157,3 +157,27 @@ body.tauri { background: rgba(11, 13, 18, 0.35); }
 @media (max-width: 640px) { .disposition { grid-template-columns: minmax(0, 1fr); padding: 34px 10px 10px; } .sections { display: none; } }
 
 @media (prefers-reduced-motion: reduce) { .bulle { animation: none; } }
+
+/* ---------- Carte « Mes actions » ---------- */
+.carte-entete { display: flex; justify-content: space-between; align-items: baseline; }
+.lien { background: none; border: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+.ligne-action { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-top: 1px solid var(--bord); font-size: 13px; }
+.ligne-action:first-child { border-top: 0; }
+.ligne-action .nom-action { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ligne-action .prix { text-align: right; font-variant-numeric: tabular-nums; }
+.ligne-action .detail { color: var(--texte-doux); font-size: 11.5px; }
+.ligne-action .var { text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
+.hausse { color: var(--vert); }
+.baisse { color: var(--rouge); }
+.total-actions { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--bord); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.carte-note { margin-top: 8px; font-size: 10.5px; color: var(--texte-doux); }
+.actions-formulaire fieldset { border: 0; padding: 6px 0; margin: 0; border-top: 1px solid var(--bord); }
+.actions-formulaire legend { font-size: 12.5px; font-weight: 600; padding: 0; }
+.actions-formulaire label { display: grid; grid-template-columns: 1fr 96px; align-items: center; font-size: 11.5px; color: var(--texte-doux); margin-top: 4px; }
+.actions-formulaire input {
+  width: 100%; background: var(--reflet); border: 1px solid var(--bord); border-radius: 8px;
+  color: var(--texte); font: inherit; font-size: 12.5px; padding: 4px 7px; text-align: right;
+}
+.formulaire-actions { display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 8px; }
+.bouton-petit { border: 0; border-radius: 999px; padding: 5px 12px; color: #fff; font: inherit; font-size: 12px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.formulaire-erreur { color: var(--rouge); font-size: 11.5px; margin-top: 4px; }
