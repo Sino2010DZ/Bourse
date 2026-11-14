@@ -1,0 +1,3 @@
+# Les données personnelles (journal, base SQLite) restent sur l'ordinateur.
+*
+!.gitignore

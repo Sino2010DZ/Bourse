@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sentinelle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="barre-titre" data-tauri-drag-region></div>
+
+  <div class="disposition">
+    <!-- À gauche : les 10 sections -->
+    <aside class="panneau sections">
+      <div class="marque">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="marque-nom">Sentinelle</div>
+          <div class="marque-sous" id="etat-systeme">Démarrage des systèmes…</div>
+        </div>
+      </div>
+      <div class="titre-groupe">Sections</div>
+      <ul id="liste-sections" class="liste-sections"></ul>
+      <div class="legende">
+        <span><i class="point active"></i>active</span>
+        <span><i class="point en_preparation"></i>en préparation</span>
+        <span><i class="point a_construire"></i>à construire</span>
+      </div>
+    </aside>
+
+    <!-- Au centre : la discussion -->
+    <main class="panneau discussion">
+      <header class="entete-discussion">
+        <div>
+          <div class="titre">Grand Chef</div>
+          <div class="sous-titre" id="modele-chef">JARVIS</div>
+        </div>
+        <div class="conso" id="conso" title="Consommation d'aujourd'hui">—</div>
+      </header>
+      <div id="fil" class="fil" aria-live="polite"></div>
+      <form id="formulaire" class="saisie">
+        <textarea id="message" rows="1" placeholder="Parlez au Grand Chef, Monsieur…" autocomplete="off"></textarea>
+        <button id="envoyer" type="submit" aria-label="Envoyer">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+    </main>
+
+    <!-- À droite : cartes rapides -->
+    <aside class="panneau cartes">
+      <section class="carte">
+        <div class="carte-titre">📈 Mes actions</div>
+        <div class="carte-vide">Arrive en Phase 2 (section Bourse).</div>
+      </section>
+      <section class="carte">
+        <div class="carte-titre">💰 Dernière alerte de prix</div>
+        <div class="carte-vide">Arrive en Phase 3 (Prix &amp; Achats).</div>
+      </section>
+      <section class="carte">
+        <div class="carte-titre">🏁 Prochaine course F1</div>
+        <div class="carte-vide">Arrive avec la section Sport.</div>
+      </section>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
