@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14          # Mac à puce Apple (M1, M2, M3, M4…)
+          - runner: macos-15          # Mac à puce Apple (M1, M2, M3, M4…)
             puce: apple
           - runner: macos-15-intel    # Mac Intel
             puce: intel
