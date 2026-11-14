@@ -1,0 +1,110 @@
+# Fabrique l'application Sentinelle.app (fichier .dmg) sur un Mac de GitHub, à chaque modification.
+# Le fichier est publié dans la page « Releases » du dépôt : « Sentinelle pour Mac ».
+name: Sentinelle Mac
+
+on:
+  push:
+    branches: [main, claude/sentinelle-ai-agents-rzy36v]
+    paths: ["sentinelle/**", ".github/workflows/sentinelle-mac.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: sentinelle-mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14          # Mac à puce Apple (M1, M2, M3, M4…)
+            puce: apple
+          - runner: macos-15-intel    # Mac Intel
+            puce: intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: sentinelle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer le cerveau Python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt "pyinstaller>=6.11"
+
+      - name: Tests
+        run: python -m pytest -q tests
+
+      - name: Empaqueter le serveur Python
+        run: PYTHON=python scripts/construire-serveur.sh
+
+      - name: Vérifier que le serveur empaqueté démarre
+        run: |
+          export HOME="$RUNNER_TEMP/maison" && mkdir -p "$HOME"
+          PORT=8799 dist/sentinelle-serveur/sentinelle-serveur &
+          PID=$!
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8799/api/sante && break; sleep 1; done
+          curl -sf http://127.0.0.1:8799/api/sante | grep -q en_ligne
+          kill $PID
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Construire Sentinelle.app
+        working-directory: sentinelle/app
+        run: |
+          npm ci
+          npx tauri build --config src-tauri/tauri.app.conf.json
+
+      - name: Renommer le fichier .dmg
+        run: |
+          mkdir -p sortie
+          cp app/src-tauri/target/release/bundle/dmg/*.dmg "sortie/Sentinelle-Mac-${{ matrix.puce }}.dmg"
+          ls -lh sortie
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinelle-Mac-${{ matrix.puce }}
+          path: sentinelle/sortie/*.dmg
+          retention-days: 14
+
+  publier:
+    needs: construire
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dmg
+          merge-multiple: true
+
+      - name: Publier dans « Releases »
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -lh dmg
+          [ -n "$(ls dmg/*.dmg 2>/dev/null)" ] || { echo "Aucun .dmg construit"; exit 1; }
+          gh release delete sentinelle-mac --yes --cleanup-tag || true
+          gh release create sentinelle-mac dmg/*.dmg \
+            --target "$GITHUB_SHA" \
+            --title "Sentinelle pour Mac" \
+            --prerelease \
+            --notes "Application Sentinelle, construite automatiquement le $(date -u '+%d.%m.%Y à %H:%M') (UTC).
+
+          - **Sentinelle-Mac-apple.dmg** : Mac à puce Apple (M1, M2, M3, M4…)
+          - **Sentinelle-Mac-intel.dmg** : Mac à processeur Intel
+
+          Pour savoir lequel prendre : menu Apple  → « À propos de ce Mac » → ligne « Puce » ou « Processeur »."

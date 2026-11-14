@@ -95,23 +95,61 @@ async function demarrer() {
     afficherConso(await api("/api/consommation"));
     chargerActions();
     setInterval(chargerActions, 5 * 60 * 1000); // toutes les 5 minutes
-    ajouterBulle(
-      sante.cle_api
-        ? "Bonjour Monsieur. Tous les systèmes sont opérationnels. Que puis-je faire pour vous ?"
-        : "Bonjour Monsieur. Mes systèmes sont en ligne, mais ma clé API est absente : je ne peux pas encore réfléchir. Le guide README explique comment l'ajouter.",
-      "chef",
-      { erreur: !sante.cle_api }
-    );
-    bouton.disabled = false;
-    champ.focus();
+    if (sante.cle_api) {
+      ajouterBulle("Bonjour Monsieur. Tous les systèmes sont opérationnels. Que puis-je faire pour vous ?", "chef");
+      bouton.disabled = false;
+      champ.focus();
+    } else {
+      demanderCle();
+    }
   } catch {
     $("etat-systeme").textContent = "Hors ligne";
     ajouterBulle(
-      "Monsieur, je n'arrive pas à joindre le serveur local. Lancez Sentinelle avec « Demarrer-Mac.command ».",
+      "Monsieur, je n'arrive pas à joindre mon serveur local. Quittez Sentinelle (Cmd+Q) puis rouvrez-la.",
       "chef",
       { erreur: true }
     );
   }
+}
+
+// Premier lancement : Monsieur colle sa clé API directement dans l'app.
+function demanderCle() {
+  const bulle = ajouterBulle(
+    "Bonjour Monsieur. Pour réfléchir, il me faut votre clé API Anthropic. Créez-la sur platform.claude.com (menu « API Keys »), puis collez-la ici. Elle restera uniquement sur ce Mac.",
+    "chef"
+  );
+  const form = el("form", "formulaire-cle");
+  const input = el("input");
+  input.type = "password";
+  input.placeholder = "sk-ant-…";
+  input.autocomplete = "off";
+  const ok = el("button", "bouton-petit", "Enregistrer");
+  ok.type = "submit";
+  const erreur = el("div", "formulaire-erreur");
+  form.append(input, ok, erreur);
+  bulle.append(form);
+  input.focus();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    erreur.textContent = "";
+    try {
+      const r = await fetch(API + "/api/cle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cle: input.value.trim() }),
+      });
+      if (!r.ok) {
+        erreur.textContent = (await r.json()).detail || "Clé refusée.";
+        return;
+      }
+      form.remove();
+      ajouterBulle("Merci Monsieur. Clé enregistrée : tous les systèmes sont opérationnels. Que puis-je faire pour vous ?", "chef");
+      bouton.disabled = false;
+      champ.focus();
+    } catch {
+      erreur.textContent = "Serveur injoignable.";
+    }
+  });
 }
 
 async function envoyer(e) {

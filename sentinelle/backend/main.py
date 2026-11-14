@@ -9,6 +9,7 @@ Lancement : python backend/main.py
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -22,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from cerveau import Cerveau, cerveau_claude
 from commandants.finance import CommandantFinance
-from config import DOSSIER_UI, Reglages, charger_reglages
+from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle
 from grand_chef import GrandChef
 from journal import Journal
 from outils.base_de_donnees import BaseDeDonnees
@@ -39,6 +40,10 @@ ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.
 
 class MessageEntrant(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
+
+
+class CleEntrante(BaseModel):
+    cle: str = Field(min_length=1, max_length=300)
 
 
 def creer_app(
@@ -88,6 +93,20 @@ def creer_app(
             "modele_grand_chef": reglages.modele_grand_chef,
             "modele_agents": reglages.modele_agents,
         }
+
+    @app.post("/api/cle")
+    def definir_cle(entree: CleEntrante) -> dict:
+        """Enregistre la clé API collée dans l'interface (au premier lancement de l'app)."""
+        nonlocal reglages
+        cle = entree.cle.strip()
+        if not cle_valide(cle):
+            raise HTTPException(status_code=422, detail="Cette clé ne ressemble pas à une clé Anthropic (elle commence par sk-ant-).")
+        enregistrer_cle(cle, reglages.dossier_donnees)
+        reglages = replace(reglages, cle_api=cle)
+        chef.reglages = reglages
+        for c in commandants.values():
+            c.reglages = reglages
+        return {"cle_api": True}
 
     @app.get("/api/sections")
     def sections() -> list[dict]:

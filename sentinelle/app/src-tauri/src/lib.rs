@@ -5,8 +5,9 @@
 //! « Quitter » (menu de l'icône ou Cmd+Q) arrête tout, serveur compris.
 
 use std::net::TcpStream;
+#[cfg(debug_assertions)]
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -20,42 +21,58 @@ const FENETRE: &str = "principale";
 /// Le processus du serveur Python, pour pouvoir l'arrêter en quittant.
 struct Serveur(Mutex<Option<Child>>);
 
-/// Dossier « sentinelle/ » (deux niveaux au-dessus de app/src-tauri).
-fn racine_projet() -> PathBuf {
-    if let Ok(chemin) = std::env::var("SENTINELLE_RACINE") {
-        return PathBuf::from(chemin);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
-}
-
-fn python(racine: &PathBuf) -> PathBuf {
-    if let Ok(chemin) = std::env::var("SENTINELLE_PYTHON") {
-        return PathBuf::from(chemin);
-    }
-    if cfg!(windows) {
-        racine.join(".venv").join("Scripts").join("python.exe")
-    } else {
-        racine.join(".venv").join("bin").join("python")
-    }
-}
-
 fn serveur_deja_lance() -> bool {
     let adresse = ([127, 0, 0, 1], PORT).into();
     TcpStream::connect_timeout(&adresse, Duration::from_millis(300)).is_ok()
 }
 
-fn lancer_serveur() -> Option<Child> {
+/// Mode développement : lance « python backend/main.py » depuis le code source.
+#[cfg(debug_assertions)]
+fn commande_serveur(_app: &AppHandle) -> Option<Command> {
+    let racine = std::env::var("SENTINELLE_RACINE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join(".."));
+    let python = std::env::var("SENTINELLE_PYTHON").map(PathBuf::from).unwrap_or_else(|_| {
+        if cfg!(windows) {
+            racine.join(".venv").join("Scripts").join("python.exe")
+        } else {
+            racine.join(".venv").join("bin").join("python")
+        }
+    });
+    let mut commande = Command::new(python);
+    commande.arg(racine.join("backend").join("main.py")).current_dir(&racine);
+    Some(commande)
+}
+
+/// Application installée : lance le serveur empaqueté dans Sentinelle.app (dossier Resources/serveur).
+#[cfg(not(debug_assertions))]
+fn commande_serveur(app: &AppHandle) -> Option<Command> {
+    let nom = if cfg!(windows) { "sentinelle-serveur.exe" } else { "sentinelle-serveur" };
+    let dossier = app.path().resource_dir().ok()?.join("serveur");
+    let mut commande = Command::new(dossier.join(nom));
+    commande.current_dir(&dossier);
+    Some(commande)
+}
+
+fn lancer_serveur(app: &AppHandle) -> Option<Child> {
     if serveur_deja_lance() {
         println!("[Sentinelle] Serveur déjà en ligne sur le port {PORT}.");
         return None;
     }
-    let racine = racine_projet();
-    let script = racine.join("backend").join("main.py");
-    match Command::new(python(&racine)).arg(&script).current_dir(&racine).spawn() {
+    let mut commande = commande_serveur(app)?;
+    // Le journal technique du serveur va dans ~/Library/Logs/ch.sentinelle.app/serveur.log
+    if let Ok(dossier) = app.path().app_log_dir() {
+        let _ = std::fs::create_dir_all(&dossier);
+        if let Ok(fichier) = std::fs::File::create(dossier.join("serveur.log")) {
+            if let Ok(copie) = fichier.try_clone() {
+                commande.stdout(Stdio::from(fichier)).stderr(Stdio::from(copie));
+            }
+        }
+    }
+    match commande.spawn() {
         Ok(enfant) => Some(enfant),
         Err(e) => {
-            eprintln!("[Sentinelle] Impossible de lancer le serveur Python : {e}");
-            eprintln!("[Sentinelle] Lancez d'abord « Demarrer-Mac.command » pour l'installer.");
+            eprintln!("[Sentinelle] Impossible de lancer le serveur : {e}");
             None
         }
     }
@@ -82,7 +99,7 @@ fn arreter_serveur(app: &AppHandle) {
 pub fn run() {
     let app = tauri::Builder::default()
         .setup(|app| {
-            app.manage(Serveur(Mutex::new(lancer_serveur())));
+            app.manage(Serveur(Mutex::new(lancer_serveur(app.handle()))));
 
             // Icône dans la barre des menus
             let ouvrir = MenuItem::with_id(app, "ouvrir", "Ouvrir Sentinelle", true, None::<&str>)?;

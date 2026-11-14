@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["app", "dmg"],
+    "category": "Productivity",
+    "shortDescription": "Votre armée d'agents IA",
+    "copyright": "Usage personnel",
+    "resources": {
+      "../../dist/sentinelle-serveur/": "serveur/"
+    },
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "12.0"
+    }
+  }
+}

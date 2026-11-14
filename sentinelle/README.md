@@ -5,6 +5,25 @@ qui dirigent chacun 5 agents. Le plan complet est dans [SENTINELLE.md](SENTINELL
 
 ![Aperçu de la Phase 2](docs/apercu-phase2.png)
 
+## Installer l'application (le plus simple)
+
+1. Ouvrez la page **Releases** du dépôt GitHub → « Sentinelle pour Mac ».
+2. Téléchargez le bon fichier : menu Apple  → « À propos de ce Mac » → ligne **Puce** (Apple M1, M2…)
+   → `Sentinelle-Mac-apple.dmg` ; ligne **Processeur** (Intel) → `Sentinelle-Mac-intel.dmg`.
+3. Ouvrez le `.dmg` et glissez **Sentinelle** dans le dossier **Applications**.
+4. Premier lancement : macOS bloque les apps qui ne viennent pas de l'App Store.
+   Ouvrez Sentinelle une fois (message de blocage → **OK**), puis allez dans
+   **Réglages Système → Confidentialité et sécurité**, tout en bas : **« Ouvrir quand même »**.
+   *Si macOS dit que l'app est « endommagée »*, tapez dans le Terminal :
+   `xattr -cr /Applications/Sentinelle.app` puis rouvrez-la.
+5. Collez votre clé API dans la discussion quand le Grand Chef vous la demande. C'est tout.
+
+Vos données (journal, cours, portefeuille, clé) sont dans `~/Library/Application Support/Sentinelle`.
+En cas de souci, le journal technique est dans `~/Library/Logs/ch.sentinelle.app/serveur.log`.
+
+L'application est reconstruite automatiquement sur un Mac de GitHub à chaque modification
+(fichier `.github/workflows/sentinelle-mac.yml`).
+
 ## Où en est-on ?
 
 | Phase | Contenu | État |
@@ -78,7 +97,7 @@ En test réel : une simple conversation coûte **1 à 2 centimes**, une question
 (dont 4,4 pour le Grand Chef et moins de 1 pour les 5 appels aux agents).
 Avec 10 questions de bourse et 20 messages simples par jour, comptez environ 25 dollars par mois. Le compteur dans l'app vous montre la dépense du jour.
 
-## Lancer Sentinelle
+## Lancer depuis le code source (pour développer)
 
 Double-cliquez sur **`Demarrer-Mac.command`**.
 

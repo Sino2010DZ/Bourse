@@ -12,7 +12,7 @@ from cerveau import Reponse  # noqa: E402
 from config import Reglages  # noqa: E402
 
 
-def fabriquer_reglages(dossier, cle="sk-ant-test"):
+def fabriquer_reglages(dossier, cle="sk-ant-test-0123456789abcdef"):
     return Reglages(
         cle_api=cle,
         modele_grand_chef="claude-opus-5-5",

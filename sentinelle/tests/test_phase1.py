@@ -74,3 +74,16 @@ def test_interface_servie(client):
     r = client.get("/")
     assert r.status_code == 200
     assert "Sentinelle" in r.text
+
+
+def test_coller_la_cle_dans_l_app(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(creer_app(fabriquer_reglages(tmp_path, cle=""), planificateur=False))
+    assert client.get("/api/sante").json()["cle_api"] is False
+    assert client.post("/api/cle", json={"cle": "pas-une-cle"}).status_code == 422
+    cle = "sk-ant-api03-" + "x" * 40
+    assert client.post("/api/cle", json={"cle": cle}).json() == {"cle_api": True}
+    assert client.get("/api/sante").json()["cle_api"] is True
+    fichier = tmp_path / ".env"
+    assert fichier.read_text(encoding="utf-8").strip() == f"ANTHROPIC_API_KEY={cle}"
+    assert oct(fichier.stat().st_mode & 0o777) == "0o600"

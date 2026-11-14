@@ -181,3 +181,9 @@ body.tauri { background: rgba(11, 13, 18, 0.35); }
 .formulaire-actions { display: flex; justify-content: flex-end; gap: 12px; align-items: center; margin-top: 8px; }
 .bouton-petit { border: 0; border-radius: 999px; padding: 5px 12px; color: #fff; font: inherit; font-size: 12px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
 .formulaire-erreur { color: var(--rouge); font-size: 11.5px; margin-top: 4px; }
+.formulaire-cle { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; white-space: normal; }
+.formulaire-cle input {
+  flex: 1; min-width: 180px; background: var(--reflet); border: 1px solid var(--bord); border-radius: 10px;
+  color: var(--texte); font: inherit; font-size: 13px; padding: 6px 10px;
+}
+.formulaire-cle .formulaire-erreur { flex-basis: 100%; }
