@@ -1,0 +1,24 @@
+{
+  "nom": "Glacier",
+  "numero": 13,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#EEF3F6",
+    "panneau": "#E4ECF1",
+    "surface": "#FFFFFF",
+    "relief": "#D9E4EB",
+    "texte": "#0F2533",
+    "texte2": "#435A69",
+    "texte3": "#516877",
+    "ligne": "rgba(15,37,51,0.1)",
+    "accent": "#0E7C86",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#0B6770"
+  },
+  "police": "plex",
+  "messages": "bulles",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "complet"
+}

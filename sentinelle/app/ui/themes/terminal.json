@@ -1,0 +1,24 @@
+{
+  "nom": "Terminal",
+  "numero": 5,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#0A0A0A",
+    "panneau": "#101010",
+    "surface": "#151515",
+    "relief": "#1E1E1E",
+    "texte": "#E8E6E1",
+    "texte2": "#B5B2AB",
+    "texte3": "#94918A",
+    "ligne": "#2A2A2A",
+    "accent": "#F5A623",
+    "surAccent": "#0A0A0A",
+    "accentTexte": "#F5A623"
+  },
+  "police": "mono",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "icones"
+}

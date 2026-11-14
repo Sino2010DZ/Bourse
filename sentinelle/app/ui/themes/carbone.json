@@ -1,0 +1,24 @@
+{
+  "nom": "Carbone",
+  "numero": 14,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#000000",
+    "panneau": "#0A0A0A",
+    "surface": "#121212",
+    "relief": "#1C1C1C",
+    "texte": "#FFFFFF",
+    "texte2": "#B8B8B8",
+    "texte3": "#949494",
+    "ligne": "#262626",
+    "accent": "#EF4444",
+    "surAccent": "#000000",
+    "accentTexte": "#F87171"
+  },
+  "police": "grotesk",
+  "messages": "plat",
+  "saisie": "pilule",
+  "droite": "cartes",
+  "bandeau": true,
+  "gauche": "icones"
+}

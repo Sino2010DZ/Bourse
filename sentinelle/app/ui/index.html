@@ -4,76 +4,185 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sentinelle</title>
+  <link rel="stylesheet" href="polices/polices.css">
   <link rel="stylesheet" href="style.css">
+  <script src="themes.js"></script>
 </head>
 <body>
   <div class="barre-titre" data-tauri-drag-region></div>
 
-  <div class="disposition">
-    <!-- À gauche : les 10 sections -->
-    <aside class="panneau sections">
+  <!-- Bandeau d'infos (thèmes avec « bandeau : oui ») -->
+  <div class="bandeau" id="bandeau" aria-label="Infos en direct"></div>
+
+  <div class="appli">
+    <!-- ============ GAUCHE ============ -->
+    <aside class="gauche">
       <div class="marque">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <div class="marque-nom">Sentinelle</div>
-          <div class="marque-sous" id="etat-systeme">Démarrage des systèmes…</div>
-        </div>
+        <div class="logo" aria-hidden="true"><span></span></div>
+        <span class="marque-nom libelle">Sentinelle</span>
       </div>
-      <div class="titre-groupe">Sections</div>
-      <ul id="liste-sections" class="liste-sections"></ul>
-      <div class="legende">
-        <span><i class="point active"></i>active</span>
-        <span><i class="point en_preparation"></i>en préparation</span>
-        <span><i class="point a_construire"></i>à construire</span>
+
+      <button class="bouton-nouveau" id="nouvelle" type="button" title="Nouvelle discussion">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="libelle">Nouvelle discussion</span>
+      </button>
+
+      <label class="recherche complet-seulement">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+        <input id="recherche" type="search" placeholder="Rechercher" autocomplete="off">
+      </label>
+
+      <nav class="historique complet-seulement" id="historique" aria-label="Historique"></nav>
+
+      <div class="titre-groupe libelle">Sections</div>
+      <ul class="liste-sections" id="liste-sections"></ul>
+
+      <div class="quota" id="quota" title="Dépense du jour par rapport à votre budget">
+        <div class="quota-ligne libelle"><span>Quota du jour</span><span id="quota-texte">—</span></div>
+        <div class="jauge"><div class="jauge-remplie" id="quota-jauge"></div></div>
       </div>
+
+      <button class="bouton-reglages" id="ouvrir-reglages" type="button" title="Réglages › Apparence">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="libelle">Réglages</span>
+      </button>
     </aside>
 
-    <!-- Au centre : la discussion -->
-    <main class="panneau discussion">
-      <header class="entete-discussion">
-        <div>
-          <div class="titre">Grand Chef</div>
-          <div class="sous-titre" id="modele-chef">JARVIS</div>
-        </div>
-        <div class="conso" id="conso" title="Consommation d'aujourd'hui">—</div>
+    <!-- ============ CENTRE ============ -->
+    <main class="centre">
+      <header class="entete">
+        <div class="entete-titre" id="titre-discussion">Nouvelle discussion</div>
+        <div class="entete-sous" id="etat-systeme">Démarrage des systèmes…</div>
       </header>
-      <div id="fil" class="fil" aria-live="polite"></div>
-      <form id="formulaire" class="saisie">
-        <textarea id="message" rows="1" placeholder="Parlez au Grand Chef, Monsieur…" autocomplete="off"></textarea>
-        <button id="envoyer" type="submit" aria-label="Envoyer">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </form>
+
+      <div class="fil" id="fil" aria-live="polite"></div>
+
+      <div class="bas">
+        <div class="suggestions" id="suggestions"></div>
+        <form class="saisie" id="formulaire">
+          <textarea id="message" rows="1" placeholder="Demandez au Grand Chef, Monsieur…" autocomplete="off"></textarea>
+          <div class="outils">
+            <button type="button" class="outil" disabled title="Joindre un fichier (bientôt)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>
+            </button>
+            <select id="section" class="choix-section" title="Section visée"></select>
+            <span class="espace"></span>
+            <button type="button" class="outil" disabled title="Dicter (bientôt)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            </button>
+            <button id="envoyer" class="envoyer" type="submit" aria-label="Envoyer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+        </form>
+        <p class="avertissement">Le Grand Chef peut se tromper. Vérifiez les infos importantes.</p>
+      </div>
     </main>
 
-    <!-- À droite : cartes rapides -->
-    <aside class="panneau cartes">
-      <section class="carte" id="carte-actions">
-        <div class="carte-entete">
-          <div class="carte-titre">📈 Mes actions</div>
-          <button class="lien" id="modifier-actions" type="button">Modifier</button>
+    <!-- ============ DROITE ============ -->
+    <aside class="droite">
+      <section class="bloc" id="bloc-bourse">
+        <div class="bloc-entete">
+          <h2>Bourse</h2>
+          <div class="periodes" id="periodes">
+            <button type="button" data-periode="1J">1J</button>
+            <button type="button" data-periode="1S">1S</button>
+            <button type="button" data-periode="1M" class="actif">1M</button>
+            <button type="button" data-periode="1A">1A</button>
+          </div>
         </div>
-        <div id="actions-contenu" class="carte-vide">Chargement des cours…</div>
+        <div class="graphique-legende"><span id="graphique-nom">—</span><span id="graphique-var"></span></div>
+        <svg class="graphique" id="graphique" viewBox="0 0 300 90" preserveAspectRatio="none" aria-label="Graphique du cours"></svg>
+        <div id="actions" class="actions"></div>
         <form id="actions-formulaire" class="actions-formulaire" hidden>
           <div id="actions-champs"></div>
-          <div class="formulaire-actions">
+          <div class="formulaire-boutons">
             <button type="button" class="lien" id="annuler-actions">Annuler</button>
-            <button type="submit" class="bouton-petit">Enregistrer</button>
+            <button type="submit" class="bouton-accent">Enregistrer</button>
           </div>
           <div class="formulaire-erreur" id="actions-erreur"></div>
         </form>
-        <div class="carte-note">Cours Yahoo Finance · information seulement, pas un conseil.</div>
+        <div class="bloc-pied">
+          <span>Yahoo Finance · information, pas un conseil</span>
+          <button class="lien" id="modifier-actions" type="button">Modifier</button>
+        </div>
       </section>
-      <section class="carte">
-        <div class="carte-titre">💰 Dernière alerte de prix</div>
-        <div class="carte-vide">Arrive en Phase 3 (Prix &amp; Achats).</div>
+
+      <section class="bloc">
+        <div class="bloc-entete"><h2>Prix suivis · Galaxus</h2></div>
+        <div class="vide">
+          <svg class="mini-courbe" viewBox="0 0 60 18" aria-hidden="true"><path d="M1 12 L12 10 L22 13 L33 7 L44 9 L59 4"/></svg>
+          Section Prix &amp; Achats à construire (Phase 3).
+        </div>
       </section>
-      <section class="carte">
-        <div class="carte-titre">🏁 Prochaine course F1</div>
-        <div class="carte-vide">Arrive avec la section Sport.</div>
+
+      <div class="duo">
+        <section class="bloc">
+          <div class="bloc-entete"><h2>Genève</h2></div>
+          <div class="vide">Météo à construire.</div>
+        </section>
+        <section class="bloc">
+          <div class="bloc-entete"><h2>F1</h2></div>
+          <div class="vide">Calendrier à construire.</div>
+        </section>
+      </div>
+
+      <section class="bloc">
+        <div class="bloc-entete"><h2>Agenda du jour</h2></div>
+        <div class="vide">Section Organisation à construire.</div>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-entete"><h2>Agents</h2><span class="compteur" id="agents-compteur"></span></div>
+        <div class="grille-agents" id="grille-agents"></div>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-entete"><h2>Musique · Spotify</h2></div>
+        <div class="musique">
+          <div class="pochette" aria-hidden="true"></div>
+          <div class="musique-texte"><div>Rien en cours</div><div class="discret">Section Divertissement à construire</div></div>
+          <button type="button" class="outil" disabled title="Pause (bientôt)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
+          </button>
+        </div>
       </section>
     </aside>
   </div>
+
+  <!-- ============ RÉGLAGES › APPARENCE ============ -->
+  <dialog id="reglages" class="reglages">
+    <form method="dialog" class="reglages-contenu">
+      <header class="reglages-entete">
+        <div>
+          <div class="reglages-fil">Réglages › <strong>Apparence</strong></div>
+          <div class="discret">Un clic change le thème. Raccourci : ⌘ + T pour le thème suivant.</div>
+        </div>
+        <button class="outil" value="fermer" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="vignettes" id="vignettes"></div>
+
+      <fieldset class="auto">
+        <label class="interrupteur">
+          <input type="checkbox" id="auto">
+          <span>Automatique : suit le réglage clair/sombre du Mac</span>
+        </label>
+        <div class="auto-choix">
+          <label>Le jour <select id="theme-clair"></select></label>
+          <label>Le soir <select id="theme-sombre"></select></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="auto">
+        <label>Budget du jour (jauge « Quota du jour »), en dollars
+          <input type="number" id="budget" min="0.05" max="100" step="0.05">
+        </label>
+      </fieldset>
+    </form>
+  </dialog>
 
   <script src="app.js"></script>
 </body>

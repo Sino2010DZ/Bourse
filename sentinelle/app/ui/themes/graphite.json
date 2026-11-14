@@ -1,0 +1,24 @@
+{
+  "nom": "Graphite",
+  "numero": 3,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#18191B",
+    "panneau": "#1F2023",
+    "surface": "#26282B",
+    "relief": "#303236",
+    "texte": "#ECEDEF",
+    "texte2": "#B4B7BC",
+    "texte3": "#9195A0",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#5B8DEF",
+    "surAccent": "#0B0B0C",
+    "accentTexte": "#8FB0F5"
+  },
+  "police": "inter",
+  "messages": "bulles",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "complet"
+}

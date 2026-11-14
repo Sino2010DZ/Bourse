@@ -1,0 +1,24 @@
+{
+  "nom": "Marine",
+  "numero": 6,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#0B1628",
+    "panneau": "#0F1D33",
+    "surface": "#14243D",
+    "relief": "#1B2E4B",
+    "texte": "#E6EEF8",
+    "texte2": "#A9B8CC",
+    "texte3": "#8A9BB3",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#22D3EE",
+    "surAccent": "#0B1628",
+    "accentTexte": "#67E8F9"
+  },
+  "police": "grotesk",
+  "messages": "bulles",
+  "saisie": "flottante",
+  "droite": "cartes",
+  "bandeau": true,
+  "gauche": "complet"
+}

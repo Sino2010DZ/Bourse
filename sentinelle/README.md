@@ -24,12 +24,35 @@ En cas de souci, le journal technique est dans `~/Library/Logs/ch.sentinelle.app
 L'application est reconstruite automatiquement sur un Mac de GitHub à chaque modification
 (fichier `.github/workflows/sentinelle-mac.yml`).
 
+## Les 20 thèmes
+
+![Nuit & or](docs/theme-01-nuit-or.png)
+
+**Réglages** (en bas à gauche) → grille de 20 vignettes : un clic change le thème tout de suite.
+**⌘ + T** passe au thème suivant. L'option **Automatique** suit le réglage clair/sombre du Mac
+(un thème pour le jour, un pour le soir). Le choix est gardé dans `preferences.json`.
+
+Chaque thème est un fichier dans `app/ui/themes/` (et non `app/themes/` : la fenêtre ne peut lire que
+le dossier `ui`). L'interface ne contient aucune couleur : elle lit seulement les 11 variables du thème.
+
+### Créer un 21e thème
+1. Copiez un thème proche, par exemple `app/ui/themes/marine.json` → `app/ui/themes/ocean.json`
+   (nom en minuscules, sans accent ni espace).
+2. Ouvrez-le avec TextEdit et changez `"nom"`, `"numero": 21` et les 11 couleurs
+   (`fond`, `panneau`, `surface`, `relief`, `texte`, `texte2`, `texte3`, `ligne`, `accent`, `surAccent`, `accentTexte`),
+   puis les options si vous voulez (`police`, `messages`, `saisie`, `droite`, `bandeau`, `gauche`).
+   Mettez `"sombre": true` si le fond est foncé (il apparaîtra dans le choix « Le soir »).
+3. Ajoutez `"ocean"` à la liste dans `app/ui/themes/index.json`.
+4. Lancez les tests : `.venv/bin/python -m pytest tests` — ils vérifient que le texte reste lisible
+   (contraste suffisant) et que rien ne manque. Ensuite, le thème apparaît dans les Réglages.
+
 ## Où en est-on ?
 
 | Phase | Contenu | État |
 |---|---|---|
 | 1 | Fondations : serveur local, fenêtre Mac, Grand Chef qui répond | ✅ |
 | 2 | Section Bourse (Commandant Finance + 5 agents, Yahoo Finance) | ✅ |
+| — | Nouvelle interface et 20 thèmes, historique des discussions | ✅ |
 | 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | à venir |
 
 ## La section Bourse (Phase 2)

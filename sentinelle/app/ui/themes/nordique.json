@@ -1,0 +1,24 @@
+{
+  "nom": "Nordique",
+  "numero": 20,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#F2F4F7",
+    "panneau": "#E9EDF2",
+    "surface": "#FFFFFF",
+    "relief": "#DEE4EB",
+    "texte": "#101828",
+    "texte2": "#475467",
+    "texte3": "#56637A",
+    "ligne": "#E3E8EF",
+    "accent": "#1D3557",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#1D3557"
+  },
+  "police": "plex",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "complet"
+}

@@ -1,0 +1,24 @@
+{
+  "nom": "Crème",
+  "numero": 18,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#F8F4E8",
+    "panneau": "#F0EAD8",
+    "surface": "#FFFDF7",
+    "relief": "#E8E0C8",
+    "texte": "#24220F",
+    "texte2": "#57543A",
+    "texte3": "#666346",
+    "ligne": "rgba(36,34,15,0.12)",
+    "accent": "#5F6B2A",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#4E5822"
+  },
+  "police": "source",
+  "messages": "plat",
+  "saisie": "pilule",
+  "droite": "liste",
+  "bandeau": false,
+  "gauche": "complet"
+}

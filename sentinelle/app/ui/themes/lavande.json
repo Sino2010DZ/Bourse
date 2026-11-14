@@ -1,0 +1,24 @@
+{
+  "nom": "Lavande",
+  "numero": 15,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#F4F2FB",
+    "panneau": "#ECE9F7",
+    "surface": "#FFFFFF",
+    "relief": "#E2DDF3",
+    "texte": "#1E1838",
+    "texte2": "#4D4670",
+    "texte3": "#5D5680",
+    "ligne": "rgba(30,24,56,0.1)",
+    "accent": "#6D28D9",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#5B21B6"
+  },
+  "police": "manrope",
+  "messages": "bulles",
+  "saisie": "flottante",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "complet"
+}

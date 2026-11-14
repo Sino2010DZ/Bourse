@@ -96,3 +96,12 @@ def client(tmp_path, cerveau, source):
     from main import creer_app
 
     return TestClient(creer_app(fabriquer_reglages(tmp_path), cerveau, source, planificateur=False))
+
+
+def _intraday(self, ticker, periode):
+    self.appels.append(("intraday", ticker))
+    base = self.donnees.get(ticker, [("", 100.0)])[-1][1]
+    return [(f"2026-11-13T{15 + i // 12:02d}:{(i % 12) * 5:02d}", base + i * 0.1) for i in range(20)]
+
+
+FausseSource.intraday = _intraday

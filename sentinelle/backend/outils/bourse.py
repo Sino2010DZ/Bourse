@@ -30,6 +30,9 @@ class Source(Protocol):
         """Cours de clôture quotidiens sur un an : [(date ISO, prix), …], du plus ancien au plus récent.
         La dernière valeur est le cours actuel pendant la séance."""
 
+    def intraday(self, ticker: str, periode: str) -> list[tuple[str, float]]:
+        """Cours dans la journée : « 1J » (toutes les 5 min) ou « 1S » (toutes les 30 min, 5 séances)."""
+
     def actus(self, ticker: str) -> list[dict]:
         """Dernières actualités : [{titre, resume, source, date, lien}, …]."""
 
@@ -57,6 +60,16 @@ class SourceYahoo:
         if h is None or h.empty:
             return []
         return [(idx.date().isoformat(), float(v)) for idx, v in h["Close"].dropna().items()]
+
+    def intraday(self, ticker: str, periode: str) -> list[tuple[str, float]]:
+        import yfinance as yf
+
+        self._patienter()
+        reglage = {"1J": ("1d", "5m"), "1S": ("5d", "30m")}[periode]
+        h = yf.Ticker(ticker).history(period=reglage[0], interval=reglage[1], auto_adjust=False)
+        if h is None or h.empty:
+            return []
+        return [(idx.isoformat(timespec="minutes"), float(v)) for idx, v in h["Close"].dropna().items()]
 
     def actus(self, ticker: str) -> list[dict]:
         import yfinance as yf
@@ -150,6 +163,7 @@ class ServiceBourse:
         self.source = source or SourceYahoo()
         self._cache_hist: dict[str, tuple[float, list[tuple[str, float]]]] = {}
         self._cache_actus: dict[str, tuple[float, list[dict]]] = {}
+        self._cache_intraday: dict[str, tuple[float, list[tuple[str, float]]]] = {}
         self._verrous: dict[str, asyncio.Lock] = {}
 
     def _verrou(self, cle: str) -> asyncio.Lock:
@@ -197,6 +211,35 @@ class ServiceBourse:
                 actus = en_cache[1] if en_cache else []
             self._cache_actus[ticker] = (time.monotonic(), actus)
             return actus[:nombre]
+
+    async def graphique(self, ticker: str, periode: str) -> dict:
+        """Points du petit graphique : 1J, 1S, 1M ou 1A."""
+        if periode not in ("1J", "1S", "1M", "1A"):
+            raise ValueError("Période inconnue")
+        if periode in ("1J", "1S"):
+            cle = f"{ticker}:{periode}"
+            async with self._verrou("i:" + cle):
+                en_cache = self._cache_intraday.get(cle)
+                if en_cache and time.monotonic() - en_cache[0] < 5 * 60:
+                    points = en_cache[1]
+                else:
+                    try:
+                        points = await asyncio.to_thread(self.source.intraday, ticker, periode)
+                    except Exception:
+                        points = en_cache[1] if en_cache else []
+                    self._cache_intraday[cle] = (time.monotonic(), points)
+        else:
+            hist = await self._historique(ticker)
+            points = hist[-22:] if periode == "1M" else hist
+        variation = None
+        if len(points) >= 2 and points[0][1]:
+            variation = round((points[-1][1] / points[0][1] - 1) * 100, 2)
+        return {
+            "ticker": ticker,
+            "periode": periode,
+            "points": [{"t": t, "p": round(p, 4)} for t, p in points],
+            "variation_pct": variation,
+        }
 
     async def positions(self, portefeuille: dict) -> dict:
         """Valeur et gains/pertes de chaque position, en devise d'origine et en CHF."""

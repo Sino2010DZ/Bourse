@@ -57,8 +57,11 @@ Règles absolues :
 - Ne supprime rien, n'achète rien, n'envoie aucun mail sans le bouton « Confirmer » de Monsieur."""
 
 
-def _prompt(historique: list[tuple[str, str]], message: str) -> str:
+def _prompt(historique: list[tuple[str, str]], message: str, section: str | None = None) -> str:
     morceaux = [f"Nous sommes le {maintenant_texte()}."]
+    noms = {s["id"]: f"{s['nom']} ({s['commandant']})" for s in SECTIONS}
+    if section in noms:
+        morceaux.append(f"Monsieur adresse cette demande en priorité à la section {noms[section]}.")
     if historique:
         morceaux.append("Derniers échanges de la conversation :")
         morceaux += [f"Monsieur : {d}\nToi : {r}" for d, r in historique]
@@ -124,7 +127,13 @@ class GrandChef:
 
         return consulter
 
-    async def repondre(self, message: str) -> Resultat:
+    async def repondre(
+        self, message: str, historique: list[tuple[str, str]] | None = None, section: str | None = None
+    ) -> Resultat:
+        """Répond à Monsieur. `historique` : derniers échanges de la discussion (sinon, mémoire interne)."""
+        memoire_interne = historique is None
+        if memoire_interne:
+            historique = self.historique
         message = message.strip()
         trace = Trace(self.journal)
         if not message:
@@ -143,14 +152,14 @@ class GrandChef:
             demande = Demande(
                 qui="grand_chef",
                 systeme=consigne_systeme(self.commandants),
-                prompt=_prompt(self.historique[-self.MEMOIRE:], message),
+                prompt=_prompt(historique[-self.MEMOIRE:], message, section),
                 modele=self.reglages.modele_grand_chef,
                 effort=self.reglages.effort_grand_chef,
                 outils=[self._outil_commandants(trace)] if self.commandants else [],
                 tours_max=4,
             )
             reponse = await self.cerveau(demande)
-            if not reponse.erreur:
+            if not reponse.erreur and memoire_interne:
                 self.historique.append((message, reponse.texte))
 
         trace.noter("grand_chef", message, reponse)

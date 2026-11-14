@@ -31,8 +31,8 @@ def test_grand_chef_repond_bonjour_monsieur(client, cerveau):
 
 
 def test_le_grand_chef_se_souvient_de_la_conversation(client, cerveau):
-    client.post("/api/chat", json={"message": "Je m'appelle Tony"})
-    client.post("/api/chat", json={"message": "Comment je m'appelle ?"})
+    d = client.post("/api/chat", json={"message": "Je m'appelle Tony"}).json()["discussion_id"]
+    client.post("/api/chat", json={"message": "Comment je m'appelle ?", "discussion_id": d})
     assert "Je m'appelle Tony" in cerveau.par("grand_chef")[1].prompt
 
 
@@ -44,7 +44,7 @@ def test_journal_et_consommation(client, tmp_path):
     lignes = [json.loads(l) for l in fichiers[0].read_text(encoding="utf-8").splitlines()]
     assert [l["qui"] for l in lignes] == ["grand_chef", "grand_chef"]
     conso = client.get("/api/consommation").json()
-    assert conso == {"echanges": 2, "tokens_entree": 200, "tokens_sortie": 40, "cout_usd": 0.002}
+    assert conso == {"echanges": 2, "tokens_entree": 200, "tokens_sortie": 40, "cout_usd": 0.002, "budget_jour_usd": 1.0}
 
 
 def test_sans_cle_api_message_poli(tmp_path):

@@ -1,0 +1,24 @@
+{
+  "nom": "Titane",
+  "numero": 16,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#2A2B2E",
+    "panneau": "#313236",
+    "surface": "#38393E",
+    "relief": "#424449",
+    "texte": "#F2F2F3",
+    "texte2": "#C3C4C8",
+    "texte3": "#A5A7AD",
+    "ligne": "rgba(255,255,255,0.1)",
+    "accent": "#FB923C",
+    "surAccent": "#1A1A1A",
+    "accentTexte": "#FDBA74"
+  },
+  "police": "plex",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "complet"
+}

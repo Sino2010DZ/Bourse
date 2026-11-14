@@ -1,0 +1,24 @@
+{
+  "nom": "Minuit",
+  "numero": 17,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#0B0B1E",
+    "panneau": "#101029",
+    "surface": "#161634",
+    "relief": "#1E1E42",
+    "texte": "#ECECFF",
+    "texte2": "#B0B0D8",
+    "texte3": "#9090BC",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#6366F1",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#A5B4FC"
+  },
+  "police": "grotesk",
+  "messages": "bulles",
+  "saisie": "pilule",
+  "droite": "cartes",
+  "bandeau": true,
+  "gauche": "icones"
+}

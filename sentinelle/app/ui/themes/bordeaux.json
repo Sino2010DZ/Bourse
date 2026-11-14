@@ -1,0 +1,24 @@
+{
+  "nom": "Bordeaux",
+  "numero": 12,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#1A0E12",
+    "panneau": "#221318",
+    "surface": "#2B181F",
+    "relief": "#361F28",
+    "texte": "#F6ECEE",
+    "texte2": "#C9B3B9",
+    "texte3": "#AD959C",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#E0A899",
+    "surAccent": "#1A0E12",
+    "accentTexte": "#E8B9AC"
+  },
+  "police": "serif",
+  "messages": "plat",
+  "saisie": "flottante",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "complet"
+}

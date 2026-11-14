@@ -1,0 +1,27 @@
+{
+  "themes": [
+    "nuit-or",
+    "ivoire",
+    "graphite",
+    "polaire",
+    "terminal",
+    "marine",
+    "foret",
+    "sable",
+    "ardoise",
+    "papier",
+    "menthe",
+    "bordeaux",
+    "glacier",
+    "carbone",
+    "lavande",
+    "titane",
+    "minuit",
+    "creme",
+    "corail",
+    "nordique"
+  ],
+  "defaut": "nuit-or",
+  "defaut_clair": "ivoire",
+  "defaut_sombre": "nuit-or"
+}

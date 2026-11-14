@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import replace
+from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -25,12 +26,14 @@ from cerveau import Cerveau, cerveau_claude
 from commandants.finance import CommandantFinance
 from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle
 from grand_chef import GrandChef
-from journal import Journal
+from journal import FUSEAU, Journal
 from outils.base_de_donnees import BaseDeDonnees
 from outils.bourse import ServiceBourse, Source
 from outils.portefeuille import ErreurPortefeuille, Portefeuille
 from plateforme import systeme
-from sections import SECTIONS
+from outils.preferences import ErreurPreferences, Preferences
+from sections import AGENTS, SECTIONS, nom_agent
+from agents.chargeur import agents_de_section
 
 VERSION = "0.2.0"
 
@@ -39,7 +42,10 @@ ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.
 
 
 class MessageEntrant(BaseModel):
-    message: str = Field(min_length=1, max_length=8000)
+    message: str = Field(default="", max_length=8000)
+    discussion_id: int | None = None
+    section: str | None = Field(default=None, max_length=40)
+    regenerer: bool = False   # « Régénérer » : refaire la dernière réponse
 
 
 class CleEntrante(BaseModel):
@@ -57,6 +63,7 @@ def creer_app(
     journal = Journal(reglages.dossier_donnees)
     base = BaseDeDonnees(reglages.dossier_donnees)
     portefeuille = Portefeuille(reglages.dossier_donnees)
+    preferences = Preferences(reglages.dossier_donnees)
     bourse = ServiceBourse(source_bourse)
     commandants = {"bourse": CommandantFinance(reglages, cerveau, bourse, portefeuille)}
     chef = GrandChef(reglages, journal, cerveau, commandants)
@@ -114,8 +121,34 @@ def creer_app(
 
     @app.post("/api/chat")
     async def chat(entree: MessageEntrant) -> dict:
-        res = await chef.repondre(entree.message)
+        maintenant = datetime.now(FUSEAU).isoformat(timespec="seconds")
+        discussion_id = entree.discussion_id
+        if discussion_id is not None and base.discussion(discussion_id) is None:
+            raise HTTPException(status_code=404, detail="Discussion introuvable.")
+
+        if entree.regenerer:
+            if discussion_id is None:
+                raise HTTPException(status_code=422, detail="Rien à régénérer.")
+            questions = [m for m in base.discussion(discussion_id)["messages"] if m["role"] == "moi"]
+            if not questions:
+                raise HTTPException(status_code=422, detail="Rien à régénérer.")
+            base.supprimer_dernier_message_chef(discussion_id)
+            message = questions[-1]["texte"]
+        else:
+            message = entree.message.strip()
+            if not message:
+                raise HTTPException(status_code=422, detail="Message vide.")
+            if discussion_id is None:
+                discussion_id = base.creer_discussion(message, maintenant)
+            base.ajouter_message(discussion_id, "moi", message, maintenant)
+
+        res = await chef.repondre(message, historique=base.echanges(discussion_id), section=entree.section)
         r, total = res.reponse, res.trace.total()
+        agents = list(dict.fromkeys(n for n in map(nom_agent, total["intervenants"]) if n))
+        meta = {"duree_ms": r.duree_ms, "tokens": total["tokens"], "cout_usd": total["cout_usd"], "erreur": r.erreur}
+        message_id = base.ajouter_message(
+            discussion_id, "chef", r.texte, datetime.now(FUSEAU).isoformat(timespec="seconds"), agents, meta
+        )
         return {
             "reponse": r.texte,
             "erreur": r.erreur,
@@ -124,12 +157,55 @@ def creer_app(
             "tokens": total["tokens"],
             "cout_usd": total["cout_usd"],
             "intervenants": total["intervenants"],
-            "consommation": journal.consommation_du_jour(),
+            "agents": agents,
+            "discussion_id": discussion_id,
+            "message_id": message_id,
+            "consommation": consommation(),
         }
+
+    @app.get("/api/discussions")
+    def liste_discussions(q: str = "") -> list[dict]:
+        return base.discussions(q[:100])
+
+    @app.get("/api/discussions/{ident}")
+    def lire_discussion(ident: int) -> dict:
+        d = base.discussion(ident)
+        if d is None:
+            raise HTTPException(status_code=404, detail="Discussion introuvable.")
+        return d
+
+    @app.get("/api/preferences")
+    def lire_preferences() -> dict:
+        return preferences.lire()
+
+    @app.put("/api/preferences")
+    def modifier_preferences(donnees: dict) -> dict:
+        try:
+            return preferences.modifier(donnees)
+        except ErreurPreferences as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
+
+    @app.get("/api/agents")
+    def agents_50() -> list[dict]:
+        resultat = []
+        for s in SECTIONS:
+            actifs = {a.id for a in agents_de_section(s["id"])}
+            for ident, nom in AGENTS[s["id"]]:
+                resultat.append({"section": s["id"], "id": ident, "nom": nom, "actif": ident in actifs})
+        return resultat
+
+    @app.get("/api/bourse/graphique")
+    async def graphique(ticker: str, periode: str = "1M") -> dict:
+        if ticker not in portefeuille.tickers():
+            raise HTTPException(status_code=404, detail="Action absente du portefeuille.")
+        try:
+            return await bourse.graphique(ticker, periode)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
 
     @app.get("/api/consommation")
     def consommation() -> dict:
-        return journal.consommation_du_jour()
+        return {**journal.consommation_du_jour(), "budget_jour_usd": preferences.lire()["budget_jour_usd"]}
 
     @app.get("/api/bourse/mes-actions")
     async def mes_actions() -> dict:

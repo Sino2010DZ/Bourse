@@ -1,0 +1,24 @@
+{
+  "nom": "Corail",
+  "numero": 19,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#FFFFFF",
+    "panneau": "#FFF6F3",
+    "surface": "#FFFFFF",
+    "relief": "#FFE9E2",
+    "texte": "#1F1412",
+    "texte2": "#5C4A46",
+    "texte3": "#6B5853",
+    "ligne": "#F1E4E0",
+    "accent": "#E25C3B",
+    "surAccent": "#1F1412",
+    "accentTexte": "#B23E22"
+  },
+  "police": "inter",
+  "messages": "bulles",
+  "saisie": "boite",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "icones"
+}

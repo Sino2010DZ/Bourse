@@ -5,6 +5,7 @@ Phase 2 : historique des cours de bourse et alertes déjà envoyées.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -17,6 +18,22 @@ CREATE TABLE IF NOT EXISTS cours (
     variation   REAL,               -- variation du jour en %
     PRIMARY KEY (ticker, horodatage)
 );
+CREATE TABLE IF NOT EXISTS discussions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    titre       TEXT NOT NULL,
+    creee       TEXT NOT NULL,
+    modifiee    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS messages (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    discussion_id INTEGER NOT NULL REFERENCES discussions(id) ON DELETE CASCADE,
+    role          TEXT NOT NULL,      -- « moi » ou « chef »
+    texte         TEXT NOT NULL,
+    agents        TEXT NOT NULL DEFAULT '[]',   -- agents consultés (JSON)
+    meta          TEXT NOT NULL DEFAULT '{}',   -- durée, tokens, coût, erreur (JSON)
+    horodatage    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS messages_discussion ON messages(discussion_id, id);
 CREATE TABLE IF NOT EXISTS alertes (
     cle         TEXT PRIMARY KEY,   -- ex. « radar:AMD:2026-11-14 » : une seule alerte par jour et par action
     horodatage  TEXT NOT NULL,
@@ -64,3 +81,68 @@ class BaseDeDonnees:
         with closing(self._connexion()) as c:
             lignes = c.execute("SELECT * FROM alertes ORDER BY horodatage DESC LIMIT ?", (limite,)).fetchall()
         return [dict(l) for l in lignes]
+
+    # ------------------------------------------------------------ discussions
+
+    def creer_discussion(self, titre: str, horodatage: str) -> int:
+        with closing(self._connexion()) as c, c:
+            cur = c.execute(
+                "INSERT INTO discussions (titre, creee, modifiee) VALUES (?, ?, ?)", (titre[:80], horodatage, horodatage)
+            )
+            return int(cur.lastrowid)
+
+    def discussion(self, ident: int) -> dict | None:
+        with closing(self._connexion()) as c:
+            d = c.execute("SELECT * FROM discussions WHERE id = ?", (ident,)).fetchone()
+            if d is None:
+                return None
+            msgs = c.execute("SELECT * FROM messages WHERE discussion_id = ? ORDER BY id", (ident,)).fetchall()
+        return {
+            **dict(d),
+            "messages": [{**dict(m), "agents": json.loads(m["agents"]), "meta": json.loads(m["meta"])} for m in msgs],
+        }
+
+    def discussions(self, recherche: str = "", limite: int = 60) -> list[dict]:
+        requete = "SELECT d.* FROM discussions d"
+        params: list = []
+        if recherche.strip():
+            requete += (
+                " WHERE d.titre LIKE ? OR EXISTS (SELECT 1 FROM messages m WHERE m.discussion_id = d.id AND m.texte LIKE ?)"
+            )
+            motif = f"%{recherche.strip()}%"
+            params += [motif, motif]
+        requete += " ORDER BY d.modifiee DESC, d.id DESC LIMIT ?"
+        params.append(limite)
+        with closing(self._connexion()) as c:
+            return [dict(l) for l in c.execute(requete, params).fetchall()]
+
+    def ajouter_message(self, discussion_id: int, role: str, texte: str, horodatage: str, agents=None, meta=None) -> int:
+        with closing(self._connexion()) as c, c:
+            cur = c.execute(
+                "INSERT INTO messages (discussion_id, role, texte, agents, meta, horodatage) VALUES (?, ?, ?, ?, ?, ?)",
+                (discussion_id, role, texte, json.dumps(agents or [], ensure_ascii=False), json.dumps(meta or {}), horodatage),
+            )
+            c.execute("UPDATE discussions SET modifiee = ? WHERE id = ?", (horodatage, discussion_id))
+            return int(cur.lastrowid)
+
+    def supprimer_dernier_message_chef(self, discussion_id: int) -> None:
+        """Pour « Régénérer » : retire la dernière réponse du Grand Chef."""
+        with closing(self._connexion()) as c, c:
+            c.execute(
+                "DELETE FROM messages WHERE id = (SELECT id FROM messages WHERE discussion_id = ? ORDER BY id DESC LIMIT 1) AND role = 'chef'",
+                (discussion_id,),
+            )
+
+    def echanges(self, discussion_id: int, limite: int = 10) -> list[tuple[str, str]]:
+        """Les derniers couples (question de Monsieur, réponse du Grand Chef), pour la mémoire."""
+        d = self.discussion(discussion_id)
+        if not d:
+            return []
+        paires, question = [], None
+        for m in d["messages"]:
+            if m["role"] == "moi":
+                question = m["texte"]
+            elif question is not None and not m["meta"].get("erreur"):
+                paires.append((question, m["texte"]))
+                question = None
+        return paires[-limite:]

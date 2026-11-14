@@ -1,0 +1,24 @@
+{
+  "nom": "Ivoire",
+  "numero": 2,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#F7F5F0",
+    "panneau": "#EFECE5",
+    "surface": "#FFFFFF",
+    "relief": "#E6E2D8",
+    "texte": "#141414",
+    "texte2": "#55524C",
+    "texte3": "#66635D",
+    "ligne": "rgba(0,0,0,0.09)",
+    "accent": "#A8884E",
+    "surAccent": "#141414",
+    "accentTexte": "#7E6230"
+  },
+  "police": "serif",
+  "messages": "plat",
+  "saisie": "pilule",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "complet"
+}

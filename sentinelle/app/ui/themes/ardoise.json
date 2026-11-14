@@ -1,0 +1,24 @@
+{
+  "nom": "Ardoise",
+  "numero": 9,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#1C1F26",
+    "panneau": "#22262F",
+    "surface": "#2A2F39",
+    "relief": "#343A46",
+    "texte": "#EEF0F5",
+    "texte2": "#B6BCC9",
+    "texte3": "#979EAE",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#A78BFA",
+    "surAccent": "#1C1F26",
+    "accentTexte": "#C4B5FD"
+  },
+  "police": "inter",
+  "messages": "bulles",
+  "saisie": "flottante",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "icones"
+}

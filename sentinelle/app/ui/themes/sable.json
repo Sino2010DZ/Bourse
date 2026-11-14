@@ -1,0 +1,24 @@
+{
+  "nom": "Sable",
+  "numero": 8,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#F3EDE3",
+    "panneau": "#EAE2D4",
+    "surface": "#FBF8F2",
+    "relief": "#E2D8C6",
+    "texte": "#2A211A",
+    "texte2": "#5E5247",
+    "texte3": "#6E6156",
+    "ligne": "rgba(42,33,26,0.12)",
+    "accent": "#B4532A",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#9A4522"
+  },
+  "police": "source",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": false,
+  "gauche": "complet"
+}

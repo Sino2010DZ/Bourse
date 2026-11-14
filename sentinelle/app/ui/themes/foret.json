@@ -1,0 +1,24 @@
+{
+  "nom": "Forêt",
+  "numero": 7,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#0E1712",
+    "panneau": "#121E17",
+    "surface": "#17261D",
+    "relief": "#1E3126",
+    "texte": "#E8F0EA",
+    "texte2": "#AFC2B5",
+    "texte3": "#8FA597",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#6EE7B7",
+    "surAccent": "#0E1712",
+    "accentTexte": "#86EFAC"
+  },
+  "police": "manrope",
+  "messages": "plat",
+  "saisie": "pilule",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "icones"
+}

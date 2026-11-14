@@ -1,0 +1,24 @@
+{
+  "nom": "Menthe",
+  "numero": 11,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#EEF6F1",
+    "panneau": "#E3EFE8",
+    "surface": "#FFFFFF",
+    "relief": "#D7E8DE",
+    "texte": "#0F2A1C",
+    "texte2": "#3F5C4C",
+    "texte3": "#4D6B5A",
+    "ligne": "rgba(15,42,28,0.1)",
+    "accent": "#15803D",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#166534"
+  },
+  "police": "manrope",
+  "messages": "bulles",
+  "saisie": "pilule",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "complet"
+}

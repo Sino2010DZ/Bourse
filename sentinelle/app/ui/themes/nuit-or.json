@@ -1,0 +1,24 @@
+{
+  "nom": "Nuit & or",
+  "numero": 1,
+  "sombre": true,
+  "couleurs": {
+    "fond": "#0B0B0C",
+    "panneau": "#111113",
+    "surface": "#17171A",
+    "relief": "#222226",
+    "texte": "#F5F3EE",
+    "texte2": "#B3B0A8",
+    "texte3": "#8E8B82",
+    "ligne": "rgba(255,255,255,0.09)",
+    "accent": "#C9A96E",
+    "surAccent": "#141414",
+    "accentTexte": "#C9A96E"
+  },
+  "police": "serif",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "cartes",
+  "bandeau": false,
+  "gauche": "complet"
+}

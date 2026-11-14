@@ -1,0 +1,24 @@
+{
+  "nom": "Papier",
+  "numero": 10,
+  "sombre": false,
+  "couleurs": {
+    "fond": "#FCFCFA",
+    "panneau": "#F4F4F0",
+    "surface": "#FFFFFF",
+    "relief": "#ECECE6",
+    "texte": "#111111",
+    "texte2": "#4A4A46",
+    "texte3": "#5C5C57",
+    "ligne": "rgba(0,0,0,0.1)",
+    "accent": "#111111",
+    "surAccent": "#FFFFFF",
+    "accentTexte": "#111111"
+  },
+  "police": "source",
+  "messages": "plat",
+  "saisie": "boite",
+  "droite": "liste",
+  "bandeau": true,
+  "gauche": "complet"
+}
