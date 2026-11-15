@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
+import threading
 import uuid
 from dataclasses import replace
 from datetime import datetime
@@ -19,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -41,7 +43,7 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.2.0"
+VERSION = "0.4.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
@@ -108,7 +110,7 @@ def creer_app(
         CORSMiddleware,
         allow_origins=ORIGINES_TAURI + [f"http://127.0.0.1:{reglages.port}", f"http://localhost:{reglages.port}"],
         allow_methods=["GET", "POST", "PUT", "DELETE"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type"],  # « X-Sentinelle » n'est volontairement pas autorisé aux pages web
     )
 
     @app.get("/api/sante")
@@ -135,6 +137,15 @@ def creer_app(
         for c in commandants.values():
             c.reglages = reglages
         return {"cle_api": True}
+
+    @app.post("/api/arreter")
+    def arreter(x_sentinelle: str = Header(default="")) -> dict:
+        """Arrête ce serveur. Utilisé par la fenêtre quand une ancienne version tourne encore.
+        L'en-tête « X-Sentinelle » oblige le navigateur à demander la permission (refusée aux sites web)."""
+        if x_sentinelle != "arreter":
+            raise HTTPException(status_code=403, detail="Refusé.")
+        threading.Timer(0.3, os._exit, args=(0,)).start()
+        return {"arret": True, "version": VERSION}
 
     @app.get("/api/sections")
     def sections() -> list[dict]:

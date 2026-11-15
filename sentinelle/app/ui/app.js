@@ -783,7 +783,7 @@ async function demarrer() {
     const sante = await attendreServeur();
     await Themes.charger(API);
     construireVignettes();
-    $("etat-systeme").textContent = `En ligne · ${sante.systeme} · ${sante.modele_grand_chef}`;
+    $("etat-systeme").textContent = `En ligne · Sentinelle ${sante.version} · ${sante.systeme}`;
     afficherSections(await api("/api/sections"));
     afficherQuota(await api("/api/consommation"));
     chargerHistorique();

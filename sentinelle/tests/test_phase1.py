@@ -87,3 +87,19 @@ def test_coller_la_cle_dans_l_app(tmp_path, monkeypatch):
     fichier = tmp_path / ".env"
     assert fichier.read_text(encoding="utf-8").strip() == f"ANTHROPIC_API_KEY={cle}"
     assert oct(fichier.stat().st_mode & 0o777) == "0o600"
+
+
+def test_meme_version_partout():
+    """La fenêtre compare sa version à celle du serveur pour remplacer un ancien serveur resté ouvert."""
+    from pathlib import Path
+
+    import main
+
+    app = Path(__file__).resolve().parent.parent / "app"
+    assert json.loads((app / "src-tauri" / "tauri.conf.json").read_text())["version"] == main.VERSION
+    assert json.loads((app / "package.json").read_text())["version"] == main.VERSION
+    assert f'version = "{main.VERSION}"' in (app / "src-tauri" / "Cargo.toml").read_text()
+
+
+def test_arret_protege(client):
+    assert client.post("/api/arreter").status_code == 403   # un site web ne peut pas envoyer l'en-tête

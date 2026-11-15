@@ -4,6 +4,7 @@
 //! une icône dans la barre des menus. Fermer la fenêtre la cache seulement ;
 //! « Quitter » (menu de l'icône ou Cmd+Q) arrête tout, serveur compris.
 
+use std::io::{Read, Write};
 use std::net::TcpStream;
 #[cfg(debug_assertions)]
 use std::path::PathBuf;
@@ -54,10 +55,45 @@ fn commande_serveur(app: &AppHandle) -> Option<Command> {
     Some(commande)
 }
 
+/// Envoie une petite requête HTTP au serveur local et renvoie la réponse brute.
+fn requete_locale(requete: &str) -> Option<String> {
+    let adresse = ([127, 0, 0, 1], PORT).into();
+    let mut flux = TcpStream::connect_timeout(&adresse, Duration::from_millis(500)).ok()?;
+    flux.set_read_timeout(Some(Duration::from_secs(3))).ok()?;
+    flux.write_all(requete.as_bytes()).ok()?;
+    let mut reponse = String::new();
+    flux.read_to_string(&mut reponse).ok()?;
+    Some(reponse)
+}
+
+/// Un serveur tourne déjà : est-ce la même version que cette fenêtre ?
+/// Sinon (ancienne version restée ouverte), on lui demande de s'arrêter pour lancer le bon.
+fn remplacer_ancien_serveur(version: &str) -> bool {
+    let sante = requete_locale("GET /api/sante HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n").unwrap_or_default();
+    if sante.contains(&format!("\"version\":\"{version}\"")) {
+        return false; // bonne version : on la garde
+    }
+    println!("[Sentinelle] Ancien serveur détecté : arrêt demandé.");
+    let _ = requete_locale(
+        "POST /api/arreter HTTP/1.0\r\nHost: 127.0.0.1\r\nX-Sentinelle: arreter\r\nContent-Length: 0\r\n\r\n",
+    );
+    for _ in 0..50 {
+        if !serveur_deja_lance() {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    eprintln!("[Sentinelle] L'ancien serveur ne s'est pas arrêté.");
+    false
+}
+
 fn lancer_serveur(app: &AppHandle) -> Option<Child> {
     if serveur_deja_lance() {
-        println!("[Sentinelle] Serveur déjà en ligne sur le port {PORT}.");
-        return None;
+        let version = app.package_info().version.to_string();
+        if !remplacer_ancien_serveur(&version) {
+            println!("[Sentinelle] Serveur déjà en ligne sur le port {PORT}.");
+            return None;
+        }
     }
     let mut commande = commande_serveur(app)?;
     // Le journal technique du serveur va dans ~/Library/Logs/ch.sentinelle.app/serveur.log
