@@ -8,7 +8,10 @@ Lancement : python backend/main.py
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import sys
+import uuid
 from dataclasses import replace
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -137,13 +140,12 @@ def creer_app(
     def sections() -> list[dict]:
         return SECTIONS
 
-    @app.post("/api/chat")
-    async def chat(entree: MessageEntrant) -> dict:
+    def preparer(entree: MessageEntrant) -> tuple[int, str]:
+        """Vérifie la demande et note la question. Rapide : renvoie (discussion, message)."""
         maintenant = datetime.now(FUSEAU).isoformat(timespec="seconds")
         discussion_id = entree.discussion_id
         if discussion_id is not None and base.discussion(discussion_id) is None:
             raise HTTPException(status_code=404, detail="Discussion introuvable.")
-
         if entree.regenerer:
             if discussion_id is None:
                 raise HTTPException(status_code=422, detail="Rien à régénérer.")
@@ -151,16 +153,18 @@ def creer_app(
             if not questions:
                 raise HTTPException(status_code=422, detail="Rien à régénérer.")
             base.supprimer_dernier_message_chef(discussion_id)
-            message = questions[-1]["texte"]
-        else:
-            message = entree.message.strip()
-            if not message:
-                raise HTTPException(status_code=422, detail="Message vide.")
-            if discussion_id is None:
-                discussion_id = base.creer_discussion(message, maintenant)
-            base.ajouter_message(discussion_id, "moi", message, maintenant)
+            return discussion_id, questions[-1]["texte"]
+        message = entree.message.strip()
+        if not message:
+            raise HTTPException(status_code=422, detail="Message vide.")
+        if discussion_id is None:
+            discussion_id = base.creer_discussion(message, maintenant)
+        base.ajouter_message(discussion_id, "moi", message, maintenant)
+        return discussion_id, message
 
-        res = await chef.repondre(message, historique=base.echanges(discussion_id), section=entree.section)
+    async def repondre(discussion_id: int, message: str, section: str | None) -> dict:
+        """Le travail long : Grand Chef, commandants, agents. Puis la réponse est notée."""
+        res = await chef.repondre(message, historique=base.echanges(discussion_id), section=section)
         r, total = res.reponse, res.trace.total()
         agents = list(dict.fromkeys(n for n in map(nom_agent, total["intervenants"]) if n))
         meta = {"duree_ms": r.duree_ms, "tokens": total["tokens"], "cout_usd": total["cout_usd"], "erreur": r.erreur}
@@ -180,6 +184,43 @@ def creer_app(
             "message_id": message_id,
             "consommation": consommation(),
         }
+
+    @app.post("/api/chat")
+    async def chat(entree: MessageEntrant) -> dict:
+        """Réponse directe (attend la fin). L'interface utilise plutôt /api/chat/tache."""
+        discussion_id, message = preparer(entree)
+        return await repondre(discussion_id, message, entree.section)
+
+    # Une question peut prendre plus d'une minute ; or le Mac coupe les requêtes trop longues
+    # (« Load failed »). L'interface lance donc une « tâche » et demande chaque seconde si elle est finie.
+    taches: dict[str, dict] = {}
+
+    @app.post("/api/chat/tache")
+    async def lancer_tache(entree: MessageEntrant) -> dict:
+        discussion_id, message = preparer(entree)
+        ident = uuid.uuid4().hex
+        etat = {"statut": "en_cours", "discussion_id": discussion_id}
+        taches[ident] = etat
+
+        async def travailler() -> None:
+            try:
+                etat.update(statut="fini", resultat=await repondre(discussion_id, message, entree.section))
+            except Exception as exc:  # ne jamais laisser l'interface attendre pour rien
+                logging.exception("Erreur pendant la réponse")
+                etat.update(statut="erreur", detail=f"erreur interne ({type(exc).__name__})")
+
+        etat["_tache"] = asyncio.create_task(travailler())
+        for vieux in list(taches)[:-50]:          # garde seulement les 50 dernières
+            if taches[vieux]["statut"] != "en_cours":
+                taches.pop(vieux, None)
+        return {"tache": ident, "discussion_id": discussion_id}
+
+    @app.get("/api/chat/tache/{ident}")
+    def suivre_tache(ident: str) -> dict:
+        etat = taches.get(ident)
+        if etat is None:
+            raise HTTPException(status_code=404, detail="Tâche inconnue (Sentinelle a peut-être redémarré).")
+        return {k: v for k, v in etat.items() if not k.startswith("_")}
 
     @app.get("/api/discussions")
     def liste_discussions(q: str = "") -> list[dict]:

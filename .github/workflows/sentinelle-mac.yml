@@ -66,6 +66,24 @@ jobs:
           npm ci
           npx tauri build --config src-tauri/tauri.app.conf.json
 
+      - name: Vérifier l'application terminée (serveur intégré, cerveau Claude, question sans clé)
+        run: |
+          APP=app/src-tauri/target/release/bundle/macos/Sentinelle.app
+          SERVEUR="$APP/Contents/Resources/serveur/sentinelle-serveur"
+          CLI=$(find "$APP/Contents/Resources/serveur" -path "*claude_agent_sdk/_bundled/claude" -type f | head -1)
+          echo "Cerveau Claude : $CLI"
+          "$CLI" --version
+          export HOME="$RUNNER_TEMP/maison2" && mkdir -p "$HOME"
+          env -u ANTHROPIC_API_KEY PORT=8798 "$SERVEUR" &
+          PID=$!
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8798/api/sante && break; sleep 1; done
+          T=$(curl -sf -X POST -H 'Content-Type: application/json' -d '{"message":"Bonjour"}' http://127.0.0.1:8798/api/chat/tache | python3 -c 'import json,sys; print(json.load(sys.stdin)["tache"])')
+          sleep 2
+          curl -sf http://127.0.0.1:8798/api/chat/tache/$T | tee /tmp/reponse.json
+          grep -q '"statut":"fini"' /tmp/reponse.json
+          grep -q 'cl' /tmp/reponse.json
+          kill $PID
+
       - name: Renommer le fichier .dmg
         run: |
           mkdir -p sortie

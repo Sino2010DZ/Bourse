@@ -128,3 +128,20 @@ def test_aucune_couleur_en_dur_hors_des_themes():
             if motif.search(ligne):
                 fautes.append(f"{fichier.name}:{n}: {ligne.strip()}")
     assert not fautes, "\n".join(fautes)
+
+
+def test_tache_de_fond_pour_les_longues_questions(client):
+    """L'interface lance une tâche puis demande si elle est finie (évite « Load failed » après 60 s)."""
+    import time
+
+    r = client.post("/api/chat/tache", json={"message": "Comment vont mes actions ?"}).json()
+    assert r["discussion_id"]
+    for _ in range(100):
+        etat = client.get(f"/api/chat/tache/{r['tache']}").json()
+        if etat["statut"] != "en_cours":
+            break
+        time.sleep(0.05)
+    assert etat["statut"] == "fini"
+    assert etat["resultat"]["reponse"].startswith("Monsieur, Compte rendu du Commandant Finance")
+    assert client.get("/api/chat/tache/inconnue").status_code == 404
+    assert client.post("/api/chat/tache", json={"message": "  "}).status_code == 422

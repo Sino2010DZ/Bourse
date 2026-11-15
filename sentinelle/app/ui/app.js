@@ -154,11 +154,47 @@ function retirerBoutonsRegenerer() {
   fil.querySelectorAll(".regenerer").forEach((b) => b.remove());
 }
 
+// Messages d'erreur du navigateur (« Load failed », « Failed to fetch »…) traduits en français.
+function traduireErreur(e) {
+  const m = (e && e.message) || "";
+  if (/load failed|failed to fetch|networkerror|network connection/i.test(m)) {
+    return "je n'arrive plus à joindre mon serveur interne. Quittez Sentinelle (⌘ + Q) puis rouvrez-la";
+  }
+  return m || "une erreur inconnue est survenue";
+}
+
+// Lance la question en « tâche » puis demande chaque seconde si la réponse est prête :
+// le Mac coupe les requêtes de plus de 60 secondes, et une question aux agents peut durer plus.
+async function attendreReponse(corps, attente) {
+  const { tache, discussion_id } = await api("/api/chat/tache", { method: "POST", body: JSON.stringify(corps) });
+  etat.discussionId = discussion_id;
+  const debut = Date.now();
+  let echecs = 0;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    let suivi;
+    try {
+      suivi = await api(`/api/chat/tache/${tache}`);
+      echecs = 0;
+    } catch (e) {
+      if (++echecs >= 5) throw e;      // 5 échecs d'affilée : le serveur ne répond vraiment plus
+      continue;
+    }
+    if (suivi.statut === "fini") return suivi.resultat;
+    if (suivi.statut === "erreur") throw new Error(suivi.detail);
+    const secondes = Math.round((Date.now() - debut) / 1000);
+    const corpsAttente = attente.querySelector(".texte");
+    if (corpsAttente && secondes >= 8) {
+      corpsAttente.textContent = secondes < 25 ? "Mes agents travaillent, Monsieur" : `Encore un instant, Monsieur (${secondes} s)`;
+    }
+  }
+}
+
 async function demander(corps, attente) {
   etat.occupe = true;
   bouton.disabled = true;
   try {
-    const r = await api("/api/chat", { method: "POST", body: JSON.stringify(corps) });
+    const r = await attendreReponse(corps, attente);
     attente.remove();
     etat.discussionId = r.discussion_id;
     retirerBoutonsRegenerer();
@@ -172,7 +208,7 @@ async function demander(corps, attente) {
     chargerHistorique();
   } catch (e) {
     attente.remove();
-    messageChef(`Toutes mes excuses, Monsieur : ${e.message || "le serveur local ne répond plus"}.`, { erreur: true });
+    messageChef(`Toutes mes excuses, Monsieur : ${traduireErreur(e)}.`, { erreur: true });
   } finally {
     etat.occupe = false;
     bouton.disabled = !etat.pret;
