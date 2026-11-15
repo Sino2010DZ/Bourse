@@ -79,6 +79,31 @@ class FausseSource:
         return [{"titre": f"News {ticker}", "resume": "", "source": "Test", "date": "2026-11-14", "lien": ""}]
 
 
+class FauxGalaxus:
+    """Remplace Galaxus : chaque produit a une liste de prix successifs ; « refuse » simule un blocage."""
+
+    def __init__(self):
+        self.prix = {}          # numéro produit -> liste de prix (le dernier est réutilisé)
+        self.refuse = False
+        self.appels = []
+
+    def lire(self, url):
+        from outils.galaxus import ErreurGalaxus, FicheProduit, valider_lien
+
+        _, ident = valider_lien(url)
+        self.appels.append(ident)
+        if self.refuse:
+            raise ErreurGalaxus("refuse", "Galaxus refuse la lecture automatique : saisissez le prix à la main.")
+        serie = self.prix.setdefault(ident, [499.0])
+        prix = serie.pop(0) if len(serie) > 1 else serie[0]
+        return FicheProduit(nom=f"Produit {ident}", prix=prix, disponible=True)
+
+
+@pytest.fixture
+def galaxus():
+    return FauxGalaxus()
+
+
 @pytest.fixture
 def cerveau():
     return FauxCerveau()
@@ -90,12 +115,12 @@ def source():
 
 
 @pytest.fixture
-def client(tmp_path, cerveau, source):
+def client(tmp_path, cerveau, source, galaxus):
     from fastapi.testclient import TestClient
 
     from main import creer_app
 
-    return TestClient(creer_app(fabriquer_reglages(tmp_path), cerveau, source, planificateur=False))
+    return TestClient(creer_app(fabriquer_reglages(tmp_path), cerveau, source, planificateur=False, lecteur_galaxus=galaxus))
 
 
 def _intraday(self, ticker, periode):

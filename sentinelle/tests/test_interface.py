@@ -66,7 +66,8 @@ def test_preferences(client):
 def test_cinquante_agents(client):
     agents = client.get("/api/agents").json()
     assert len(agents) == 50
-    assert sorted(a["nom"] for a in agents if a["actif"]) == ["Analyste", "Comptable", "Journaliste", "Radar", "Trader"]
+    actifs = sorted(a["nom"] for a in agents if a["actif"])
+    assert actifs == ["Alarme", "Analyste", "Chasseur", "Comptable", "Historien", "Journaliste", "Radar", "Trader"]
 
 
 @pytest.mark.parametrize("periode", ["1J", "1S", "1M", "1A"])

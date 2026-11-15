@@ -34,6 +34,22 @@ CREATE TABLE IF NOT EXISTS messages (
     horodatage    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS messages_discussion ON messages(discussion_id, id);
+CREATE TABLE IF NOT EXISTS produits (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    galaxus_id  TEXT NOT NULL UNIQUE,
+    url         TEXT NOT NULL,
+    nom         TEXT NOT NULL,
+    ajoute      TEXT NOT NULL,
+    statut      TEXT NOT NULL DEFAULT 'ok',   -- ok, refuse, introuvable, prix_absent, reseau
+    message     TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS prix (
+    produit_id  INTEGER NOT NULL REFERENCES produits(id) ON DELETE CASCADE,
+    horodatage  TEXT NOT NULL,
+    prix        REAL NOT NULL,      -- CHF
+    source      TEXT NOT NULL,      -- « auto » (lu sur Galaxus) ou « manuel » (saisi par Monsieur)
+    PRIMARY KEY (produit_id, horodatage)
+);
 CREATE TABLE IF NOT EXISTS alertes (
     cle         TEXT PRIMARY KEY,   -- ex. « radar:AMD:2026-11-14 » : une seule alerte par jour et par action
     horodatage  TEXT NOT NULL,
@@ -52,6 +68,7 @@ class BaseDeDonnees:
     def _connexion(self) -> sqlite3.Connection:
         c = sqlite3.connect(self.chemin)
         c.row_factory = sqlite3.Row
+        c.execute("PRAGMA foreign_keys = ON")
         return c
 
     def noter_cours(self, ticker: str, horodatage: str, prix: float, variation: float | None) -> None:
@@ -76,6 +93,10 @@ class BaseDeDonnees:
     def noter_alerte(self, cle: str, horodatage: str, message: str) -> None:
         with closing(self._connexion()) as c, c:
             c.execute("INSERT OR IGNORE INTO alertes (cle, horodatage, message) VALUES (?, ?, ?)", (cle, horodatage, message))
+
+    def supprimer_alertes(self, prefixe: str) -> None:
+        with closing(self._connexion()) as c, c:
+            c.execute("DELETE FROM alertes WHERE cle LIKE ? ESCAPE '\\'", (prefixe.replace("%", "\\%").replace("_", "\\_") + "%",))
 
     def dernieres_alertes(self, limite: int = 5) -> list[dict]:
         with closing(self._connexion()) as c:
@@ -146,3 +167,52 @@ class BaseDeDonnees:
                 paires.append((question, m["texte"]))
                 question = None
         return paires[-limite:]
+
+    # ------------------------------------------------------------ produits suivis (Galaxus)
+
+    def ajouter_produit(self, galaxus_id: str, url: str, nom: str, horodatage: str) -> int:
+        with closing(self._connexion()) as c, c:
+            cur = c.execute(
+                "INSERT INTO produits (galaxus_id, url, nom, ajoute) VALUES (?, ?, ?, ?)", (galaxus_id, url, nom, horodatage)
+            )
+            return int(cur.lastrowid)
+
+    def produit(self, ident: int) -> dict | None:
+        with closing(self._connexion()) as c:
+            l = c.execute("SELECT * FROM produits WHERE id = ?", (ident,)).fetchone()
+        return dict(l) if l else None
+
+    def produit_par_galaxus_id(self, galaxus_id: str) -> dict | None:
+        with closing(self._connexion()) as c:
+            l = c.execute("SELECT * FROM produits WHERE galaxus_id = ?", (galaxus_id,)).fetchone()
+        return dict(l) if l else None
+
+    def produits(self) -> list[dict]:
+        with closing(self._connexion()) as c:
+            return [dict(l) for l in c.execute("SELECT * FROM produits ORDER BY id").fetchall()]
+
+    def modifier_produit(self, ident: int, **champs) -> None:
+        autorises = {k: v for k, v in champs.items() if k in ("nom", "statut", "message")}
+        if not autorises:
+            return
+        affectations = ", ".join(f"{k} = ?" for k in autorises)
+        with closing(self._connexion()) as c, c:
+            c.execute(f"UPDATE produits SET {affectations} WHERE id = ?", (*autorises.values(), ident))
+
+    def supprimer_produit(self, ident: int) -> None:
+        with closing(self._connexion()) as c, c:
+            c.execute("DELETE FROM produits WHERE id = ?", (ident,))
+
+    def noter_prix(self, produit_id: int, horodatage: str, prix: float, source: str) -> None:
+        with closing(self._connexion()) as c, c:
+            c.execute(
+                "INSERT OR REPLACE INTO prix (produit_id, horodatage, prix, source) VALUES (?, ?, ?, ?)",
+                (produit_id, horodatage, prix, source),
+            )
+
+    def historique_prix(self, produit_id: int) -> list[dict]:
+        with closing(self._connexion()) as c:
+            lignes = c.execute(
+                "SELECT horodatage, prix, source FROM prix WHERE produit_id = ? ORDER BY horodatage", (produit_id,)
+            ).fetchall()
+        return [dict(l) for l in lignes]

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 SECTIONS: list[dict] = [
     {"id": "materiel", "nom": "Matériel PC", "icone": "🔧", "commandant": "Commandant Tech", "statut": "a_construire"},
-    {"id": "achats", "nom": "Prix & Achats", "icone": "💰", "commandant": "Commandant Achats", "statut": "a_construire"},
+    {"id": "achats", "nom": "Prix & Achats", "icone": "💰", "commandant": "Commandant Achats", "statut": "active"},
     {"id": "bourse", "nom": "Bourse", "icone": "📈", "commandant": "Commandant Finance", "statut": "active"},
     {"id": "renseignement", "nom": "Renseignement", "icone": "🌐", "commandant": "Commandant Veille", "statut": "a_construire"},
     {"id": "sport", "nom": "Sport", "icone": "🏁", "commandant": "Commandant Stade", "statut": "a_construire"},

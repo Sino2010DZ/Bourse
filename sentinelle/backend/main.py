@@ -23,13 +23,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from cerveau import Cerveau, cerveau_claude
+from commandants.achats import CommandantAchats
 from commandants.finance import CommandantFinance
 from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle
 from grand_chef import GrandChef
 from journal import FUSEAU, Journal
 from outils.base_de_donnees import BaseDeDonnees
 from outils.bourse import ServiceBourse, Source
+from outils.galaxus import ErreurGalaxus
 from outils.portefeuille import ErreurPortefeuille, Portefeuille
+from outils.suivi_prix import Lecteur, SuiviPrix
 from plateforme import systeme
 from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
@@ -48,6 +51,16 @@ class MessageEntrant(BaseModel):
     regenerer: bool = False   # « Régénérer » : refaire la dernière réponse
 
 
+class ProduitEntrant(BaseModel):
+    url: str = Field(min_length=10, max_length=500)
+    nom: str | None = Field(default=None, max_length=120)
+    prix: float | None = Field(default=None, gt=0, lt=1_000_000)
+
+
+class PrixEntrant(BaseModel):
+    prix: float = Field(gt=0, lt=1_000_000)
+
+
 class CleEntrante(BaseModel):
     cle: str = Field(min_length=1, max_length=300)
 
@@ -57,6 +70,7 @@ def creer_app(
     cerveau: Cerveau | None = None,
     source_bourse: Source | None = None,
     planificateur: bool = True,
+    lecteur_galaxus: Lecteur | None = None,
 ) -> FastAPI:
     reglages = reglages or charger_reglages()
     cerveau = cerveau or cerveau_claude
@@ -65,7 +79,11 @@ def creer_app(
     portefeuille = Portefeuille(reglages.dossier_donnees)
     preferences = Preferences(reglages.dossier_donnees)
     bourse = ServiceBourse(source_bourse)
-    commandants = {"bourse": CommandantFinance(reglages, cerveau, bourse, portefeuille)}
+    suivi = SuiviPrix(base, lecteur_galaxus)
+    commandants = {
+        "achats": CommandantAchats(reglages, cerveau, suivi, base),
+        "bourse": CommandantFinance(reglages, cerveau, bourse, portefeuille),
+    }
     chef = GrandChef(reglages, journal, cerveau, commandants)
 
     @asynccontextmanager
@@ -74,7 +92,7 @@ def creer_app(
         if planificateur:
             from planificateur import creer_planificateur
 
-            planif = creer_planificateur(bourse, portefeuille, base, systeme().notifier)
+            planif = creer_planificateur(bourse, portefeuille, base, systeme().notifier, suivi)
             planif.start()
         yield
         if planif:
@@ -86,7 +104,7 @@ def creer_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ORIGINES_TAURI + [f"http://127.0.0.1:{reglages.port}", f"http://localhost:{reglages.port}"],
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],
     )
 
@@ -221,6 +239,53 @@ def creer_app(
             return portefeuille.enregistrer(donnees)
         except ErreurPortefeuille as e:
             raise HTTPException(status_code=422, detail=str(e)) from None
+
+    # ------------------------------------------------------------ Prix & Achats (Galaxus)
+
+    def _fiche_ou_404(ident: int) -> dict:
+        f = suivi.fiche(ident)
+        if f is None:
+            raise HTTPException(status_code=404, detail="Produit introuvable.")
+        return f
+
+    @app.get("/api/produits")
+    def produits() -> list[dict]:
+        return suivi.liste()
+
+    @app.post("/api/produits", status_code=201)
+    async def ajouter_produit(entree: ProduitEntrant) -> dict:
+        try:
+            return await suivi.ajouter(entree.url, entree.nom, entree.prix)
+        except ErreurGalaxus as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
+
+    @app.post("/api/produits/{ident}/prix")
+    def saisir_prix(ident: int, entree: PrixEntrant) -> dict:
+        _fiche_ou_404(ident)
+        suivi.saisir(ident, entree.prix)
+        alerte = suivi.verifier_baisse(ident, systeme().notifier)
+        return {**suivi.fiche(ident), "alerte": alerte}
+
+    @app.post("/api/produits/{ident}/relever")
+    async def relever_prix(ident: int) -> dict:
+        _fiche_ou_404(ident)
+        resultat = await suivi.relever(ident)
+        alerte = suivi.verifier_baisse(ident, systeme().notifier) if resultat["ok"] else None
+        return {**suivi.fiche(ident), "releve": resultat, "alerte": alerte}
+
+    @app.delete("/api/produits/{ident}")
+    def supprimer_produit(ident: int, confirmer: bool = False) -> dict:
+        _fiche_ou_404(ident)
+        if not confirmer:   # règle de sécurité : jamais de suppression sans le bouton « Confirmer »
+            raise HTTPException(status_code=409, detail="Confirmation requise.")
+        suivi.supprimer(ident)
+        return {"supprime": ident}
+
+    @app.post("/api/produits/{ident}/ouvrir")
+    def ouvrir_produit(ident: int) -> dict:
+        """Ouvre la page Galaxus du produit dans le navigateur (aucun achat n'est fait)."""
+        f = _fiche_ou_404(ident)
+        return {"ouvert": systeme().ouvrir_lien(f["url"])}
 
     @app.get("/api/alertes")
     def alertes() -> list[dict]:

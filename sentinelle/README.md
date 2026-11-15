@@ -24,6 +24,25 @@ En cas de souci, le journal technique est dans `~/Library/Logs/ch.sentinelle.app
 L'application est reconstruite automatiquement sur un Mac de GitHub à chaque modification
 (fichier `.github/workflows/sentinelle-mac.yml`).
 
+## Prix & Achats — Galaxus (Phase 3)
+
+![Courbe de prix](docs/phase3-courbe-prix.png)
+
+- **Ajouter un produit** : carte « Prix suivis · Galaxus » → **+ Ajouter** → collez le lien de la page
+  produit galaxus.ch → **Suivre**.
+- **Relevé automatique** chaque jour à 8h (et au démarrage si 8h est passé), une seule lecture par produit.
+  Sentinelle se présente honnêtement et ne contourne aucune protection.
+- **Si Galaxus refuse la lecture** (cela arrive : Galaxus bloque certains programmes), la fiche du produit
+  s'ouvre : notez le prix affiché sur Galaxus dans « Prix du jour en CHF ». La courbe, le plus bas prix
+  et les alertes fonctionnent exactement pareil.
+- **Cliquez un produit** pour voir sa grande courbe, ses relevés, « Relever le prix maintenant »,
+  « Voir sur Galaxus » (ouvre la page dans votre navigateur) et « Ne plus suivre » (demande **Confirmer**).
+- **Notification Mac** dès qu'un prix baisse (une seule fois par nouveau prix).
+- **Demandez au Grand Chef** : « Où en sont mes prix Galaxus ? », « Y a-t-il eu des baisses ? »
+  Agents en service : Chasseur, Historien, Alarme. Comparateur (autres sites suisses) et Black Friday
+  arriveront avec la section Renseignement, qui sait chercher sur le web.
+- Sentinelle **n'achète jamais rien** : elle informe et ouvre la page Galaxus, c'est vous qui décidez.
+
 ## Les 20 thèmes
 
 ![Nuit & or](docs/theme-01-nuit-or.png)
@@ -53,7 +72,7 @@ le dossier `ui`). L'interface ne contient aucune couleur : elle lit seulement le
 | 1 | Fondations : serveur local, fenêtre Mac, Grand Chef qui répond | ✅ |
 | 2 | Section Bourse (Commandant Finance + 5 agents, Yahoo Finance) | ✅ |
 | — | Nouvelle interface et 20 thèmes, historique des discussions | ✅ |
-| 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | à venir |
+| 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | ✅ |
 
 ## La section Bourse (Phase 2)
 

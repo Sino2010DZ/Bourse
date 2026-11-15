@@ -6,7 +6,7 @@ const SERVI_PAR_LE_SERVEUR = location.protocol.startsWith("http") && location.po
 const API = SERVI_PAR_LE_SERVEUR ? "" : `http://127.0.0.1:${PORT}`;
 const SUGGESTIONS = [
   "Comment vont mes actions ?",
-  "Quelles sont les nouvelles sur AMD ?",
+  "Où en sont mes prix Galaxus ?",
   "Quelle est la tendance d'Aston Martin ?",
   "Qu'est-ce qui bouge fort aujourd'hui ?",
 ];
@@ -23,6 +23,8 @@ const etat = {
   occupe: false,
   graphique: { ticker: null, periode: "1M" },
   positions: [],
+  produits: [],
+  produitOuvert: null,
 };
 
 // ------------------------------------------------------------ outils
@@ -351,9 +353,10 @@ async function chargerGraphique() {
   }
 }
 
-function dessinerCourbe(svg, valeurs, largeur = 300, hauteur = 90) {
+function dessinerCourbe(svg, valeurs, largeur = 300, hauteur = 90, avecAire = true) {
   const ns = "http://www.w3.org/2000/svg";
   svg.replaceChildren();
+  if (valeurs.length === 1) valeurs = [valeurs[0], valeurs[0]];
   if (valeurs.length < 2) return;
   const min = Math.min(...valeurs), max = Math.max(...valeurs);
   const ecart = max - min || 1;
@@ -368,7 +371,8 @@ function dessinerCourbe(svg, valeurs, largeur = 300, hauteur = 90) {
   const ligne = document.createElementNS(ns, "path");
   ligne.setAttribute("d", d);
   ligne.setAttribute("class", "ligne-cours");
-  svg.append(aire, ligne);
+  if (avecAire) svg.append(aire);
+  svg.append(ligne);
 }
 
 function afficherBandeau(positions) {
@@ -380,7 +384,17 @@ function afficherBandeau(positions) {
     if (v != null) e.append(el("span", v > 0 ? "hausse" : "", `${fleche(v)}${signe(v)} %`));
     return e;
   });
-  for (const [titre, texte] of [["Galaxus", "à construire"], ["F1", "à construire"], ["Genève", "météo à construire"]]) {
+  const produit = etat.produits.find((p) => p.prix != null);
+  const galaxus = el("span", "element");
+  galaxus.append(el("strong", "", "Galaxus"));
+  if (produit) {
+    galaxus.append(document.createTextNode(`${produit.nom.slice(0, 28)} ${fmt(produit.prix)} CHF `));
+    if (produit.variation) galaxus.append(el("span", produit.variation < 0 ? "hausse" : "", `${fleche(produit.variation)}${signe(produit.variation)}`));
+  } else {
+    galaxus.append(document.createTextNode("aucun produit suivi"));
+  }
+  elements.push(galaxus);
+  for (const [titre, texte] of [["F1", "à construire"], ["Genève", "météo à construire"]]) {
     const e = el("span", "element");
     e.append(el("strong", "", titre), document.createTextNode(texte));
     elements.push(e);
@@ -431,6 +445,153 @@ $("actions-formulaire").addEventListener("submit", async (e) => {
     chargerActions();
   } catch (err) {
     $("actions-erreur").textContent = err.message;
+  }
+});
+
+// ------------------------------------------------------------ prix suivis (Galaxus)
+
+const date = (iso) => new Date(iso).toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit", year: "2-digit" });
+const dateHeure = (iso) => `${date(iso)} ${new Date(iso).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" })}`;
+
+async function chargerProduits() {
+  try {
+    etat.produits = await api("/api/produits");
+  } catch {
+    return;
+  }
+  const zone = $("produits");
+  if (!etat.produits.length) {
+    zone.replaceChildren(el("div", "vide", "Aucun produit suivi. Cliquez sur « + Ajouter » et collez un lien Galaxus."));
+  } else {
+    zone.replaceChildren(
+      ...etat.produits.map((p) => {
+        const b = el("button", "produit");
+        b.type = "button";
+        b.title = `${p.nom} — cliquez pour la courbe`;
+        b.append(el("span", "nom-produit", p.nom));
+        const manuel = p.historique.length && p.historique[p.historique.length - 1].source === "manuel";
+        const etatTexte = p.statut !== "ok" && p.prix == null ? "prix à saisir (lecture refusée)" :
+          p.dernier_releve ? `${manuel ? "saisi" : "relevé"} le ${date(p.dernier_releve)}` : "en attente du premier relevé";
+        b.append(el("span", "etat-produit", etatTexte));
+        const mini = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        mini.setAttribute("class", "mini");
+        mini.setAttribute("viewBox", "0 0 64 22");
+        mini.setAttribute("preserveAspectRatio", "none");
+        dessinerCourbe(mini, p.historique.map((h) => h.prix), 64, 22, false);
+        b.append(mini);
+        b.append(el("span", "prix-produit", p.prix == null ? "—" : `${fmt(p.prix)} CHF`));
+        const v = p.variation;
+        b.append(el("span", "var-produit" + (v < 0 ? " baisse" : ""), v ? `${fleche(v)}${signe(v)}` : p.prix_min != null && p.prix === p.prix_min && p.nb_releves > 1 ? "plus bas" : ""));
+        b.addEventListener("click", () => ouvrirProduit(p.id));
+        return b;
+      })
+    );
+  }
+  afficherBandeau(etat.positions);
+  if (etat.produitOuvert) remplirFiche();
+}
+
+function basculerFormulaireProduit(ouvert) {
+  $("produit-formulaire").hidden = !ouvert;
+  $("produit-erreur").textContent = "";
+  if (ouvert) { $("produit-lien").value = ""; $("produit-prix").value = ""; $("produit-lien").focus(); }
+}
+
+$("ajouter-produit").addEventListener("click", () => basculerFormulaireProduit($("produit-formulaire").hidden));
+$("annuler-produit").addEventListener("click", () => basculerFormulaireProduit(false));
+$("produit-formulaire").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const bouton = e.currentTarget.querySelector("button[type=submit]");
+  bouton.disabled = true;
+  $("produit-erreur").textContent = "Lecture du prix sur Galaxus…";
+  try {
+    const prix = $("produit-prix").value;
+    const p = await api("/api/produits", {
+      method: "POST",
+      body: JSON.stringify({ url: $("produit-lien").value.trim(), prix: prix ? Number(prix) : null }),
+    });
+    basculerFormulaireProduit(false);
+    await chargerProduits();
+    if (p.statut !== "ok" && p.prix == null) ouvrirProduit(p.id);   // Galaxus refuse : saisir le prix
+  } catch (err) {
+    $("produit-erreur").textContent = err.message;
+  } finally {
+    bouton.disabled = false;
+  }
+});
+
+function ouvrirProduit(id) {
+  etat.produitOuvert = id;
+  $("fp-confirmation").hidden = true;
+  $("fp-supprimer").hidden = false;
+  $("fp-erreur").textContent = "";
+  $("fp-prix").value = "";
+  remplirFiche();
+  if (!$("fiche-produit").open) $("fiche-produit").showModal();
+}
+
+function remplirFiche() {
+  const p = etat.produits.find((x) => x.id === etat.produitOuvert);
+  if (!p) { $("fiche-produit").close(); return; }
+  $("fp-nom").textContent = p.nom;
+  $("fp-etat").textContent = p.statut === "ok" || !p.statut
+    ? `Suivi depuis le ${date(p.ajoute)} · ${p.nb_releves} relevé(s) · lecture automatique chaque jour à 8h`
+    : `${p.message.replace(/ :.*$/, ".")} Notez ici le prix affiché sur Galaxus : la courbe et les alertes fonctionnent pareil.`;
+  const chiffres = [["Prix actuel", p.prix], ["Plus bas", p.prix_min], ["Plus haut", p.prix_max], ["Au départ", p.premier_prix]];
+  $("fp-chiffres").replaceChildren(
+    ...chiffres.map(([titre, valeur]) => {
+      const d = el("div");
+      d.append(el("span", "", titre), el("strong", "", valeur == null ? "—" : `${fmt(valeur)} CHF`));
+      return d;
+    })
+  );
+  dessinerCourbe($("fp-graphique"), p.historique.map((h) => h.prix), 600, 160);
+  $("fp-releves").replaceChildren(
+    ...p.historique.slice().reverse().slice(0, 30).map((h) => {
+      const ligne = el("div");
+      ligne.append(
+        el("span", "", `${dateHeure(h.horodatage)} · ${h.source === "auto" ? "lu sur Galaxus" : "saisi à la main"}`),
+        el("span", "", `${fmt(h.prix)} CHF`)
+      );
+      return ligne;
+    })
+  );
+}
+
+$("fp-fermer").addEventListener("click", () => { $("fiche-produit").close(); });
+$("fiche-produit").addEventListener("close", () => { etat.produitOuvert = null; });
+$("fp-saisie").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await api(`/api/produits/${etat.produitOuvert}/prix`, { method: "POST", body: JSON.stringify({ prix: Number($("fp-prix").value) }) });
+    $("fp-prix").value = "";
+    $("fp-erreur").textContent = "";
+    chargerProduits();
+  } catch (err) {
+    $("fp-erreur").textContent = err.message;
+  }
+});
+$("fp-relever").addEventListener("click", async () => {
+  $("fp-etat").textContent = "Lecture du prix sur Galaxus…";
+  try {
+    const r = await api(`/api/produits/${etat.produitOuvert}/relever`, { method: "POST" });
+    await chargerProduits();
+    if (!r.releve.ok) $("fp-etat").textContent = r.releve.message;
+  } catch (err) {
+    $("fp-etat").textContent = err.message;
+  }
+});
+$("fp-ouvrir").addEventListener("click", () => api(`/api/produits/${etat.produitOuvert}/ouvrir`, { method: "POST" }).catch(() => {}));
+// Règle de sécurité : rien n'est supprimé sans le bouton « Confirmer ».
+$("fp-supprimer").addEventListener("click", () => { $("fp-supprimer").hidden = true; $("fp-confirmation").hidden = false; });
+$("fp-annuler").addEventListener("click", () => { $("fp-supprimer").hidden = false; $("fp-confirmation").hidden = true; });
+$("fp-confirmer").addEventListener("click", async () => {
+  try {
+    await api(`/api/produits/${etat.produitOuvert}?confirmer=true`, { method: "DELETE" });
+    $("fiche-produit").close();
+    chargerProduits();
+  } catch (err) {
+    $("fp-erreur").textContent = err.message;
   }
 });
 
@@ -592,7 +753,9 @@ async function demarrer() {
     chargerHistorique();
     chargerAgents();
     chargerActions();
+    chargerProduits();
     setInterval(chargerActions, 5 * 60 * 1000);
+    setInterval(chargerProduits, 30 * 60 * 1000);
     if (sante.cle_api) {
       etat.pret = true;
       bouton.disabled = false;

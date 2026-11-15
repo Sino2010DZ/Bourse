@@ -3,7 +3,8 @@
 - Cours de bourse : toutes les 15 minutes, du lundi au vendredi, de 9h à 22h (heure de Zurich),
   ce qui couvre la bourse suisse, Londres et New York. Aucun appel à Claude : c'est gratuit.
   Si une action bouge plus que le seuil du radar, une notification Mac est envoyée (une fois par jour et par action).
-- Prix Galaxus (8h) et briefing du matin (7h30) : ajoutés avec leurs sections.
+- Prix Galaxus : chaque jour à 8h, une seule lecture par produit ; notification si le prix baisse.
+- Briefing du matin (7h30) : ajouté avec la section Organisation.
 """
 
 from __future__ import annotations
@@ -48,8 +49,22 @@ async def releve_bourse(bourse: ServiceBourse, portefeuille: Portefeuille, base:
     return alertes
 
 
-def creer_planificateur(bourse: ServiceBourse, portefeuille: Portefeuille, base: BaseDeDonnees, notifier: Notifier) -> AsyncIOScheduler:
+def creer_planificateur(
+    bourse: ServiceBourse, portefeuille: Portefeuille, base: BaseDeDonnees, notifier: Notifier, suivi=None
+) -> AsyncIOScheduler:
     planif = AsyncIOScheduler(timezone=FUSEAU)
+    if suivi is not None:
+        # Prix Galaxus : une fois par jour à 8h (heure de Zurich), une requête par produit.
+        planif.add_job(
+            suivi.relever_tous,
+            CronTrigger(hour=8, minute=0, timezone=FUSEAU),
+            args=[notifier],
+            id="prix_galaxus",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Sentinelle fermée à 8h ? Les produits pas encore relevés aujourd'hui le sont au démarrage.
+        planif.add_job(suivi.relever_si_besoin, args=[notifier], id="prix_demarrage")
     planif.add_job(
         releve_bourse,
         CronTrigger(day_of_week="mon-fri", hour="9-21", minute="*/15", timezone=FUSEAU),

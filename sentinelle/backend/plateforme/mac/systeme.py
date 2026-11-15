@@ -22,3 +22,12 @@ def notifier(titre: str, message: str) -> bool:
         return True
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+def ouvrir_lien(url: str) -> bool:
+    """Ouvre un lien dans le navigateur par défaut du Mac."""
+    try:
+        subprocess.run(["open", url], check=True, timeout=10, capture_output=True)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        return False

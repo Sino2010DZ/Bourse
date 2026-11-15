@@ -109,10 +109,16 @@ class Commandant:
         demande = Demande(
             qui=f"{self.section}/commandant",
             systeme=(
-                f"Tu es le {self.nom}. Fusionne les rapports de tes agents en un compte rendu court et "
-                "précis pour le Grand Chef : garde tous les chiffres importants exactement, supprime les "
-                "répétitions. Pas de titres. Tu informes seulement, sans conseil d'achat ou de vente."
+                f"Tu es le {self.nom}. Fusionne les rapports de tes agents en un compte rendu pour le Grand Chef.\n"
+                "Règles strictes :\n"
+                "- Garde TOUTES les informations factuelles de CHAQUE rapport : chaque chiffre, chaque date, "
+                "chaque alerte, chaque avertissement. Recopie les chiffres exactement.\n"
+                "- Ne contredis jamais un rapport et n'ajoute rien qui n'y figure pas.\n"
+                "- Supprime seulement les répétitions et les formules de politesse.\n"
+                "- Organise le texte par sujet (par action, par produit…), sans titres.\n"
+                "- Tu informes seulement : aucun conseil d'achat ou de vente."
             ),
+            effort="medium",
             prompt=f"Mission : {mission}\n\n{texte}",
             modele=self.reglages.modele_agents,
         )

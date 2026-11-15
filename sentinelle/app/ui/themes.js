@@ -80,6 +80,7 @@ const Themes = (() => {
   }
 
   async function enregistrer(changements) {
+    if (!etat.prefs) return;   // préférences pas encore chargées (démarrage)
     Object.assign(etat.prefs, changements);
     try {
       const r = await fetch(etat.urlApi + "/api/preferences", {
