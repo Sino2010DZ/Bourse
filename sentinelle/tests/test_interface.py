@@ -134,15 +134,16 @@ def test_tache_de_fond_pour_les_longues_questions(client):
     """L'interface lance une tâche puis demande si elle est finie (évite « Load failed » après 60 s)."""
     import time
 
-    r = client.post("/api/chat/tache", json={"message": "Comment vont mes actions ?"}).json()
-    assert r["discussion_id"]
-    fin = time.monotonic() + 60       # large marge : les machines de GitHub sont parfois lentes
-    while time.monotonic() < fin:
-        etat = client.get(f"/api/chat/tache/{r['tache']}").json()
-        if etat["statut"] != "en_cours":
-            break
-        time.sleep(0.1)
-    assert etat["statut"] == "fini"
-    assert etat["resultat"]["reponse"].startswith("Monsieur, Compte rendu du Commandant Finance")
-    assert client.get("/api/chat/tache/inconnue").status_code == 404
-    assert client.post("/api/chat/tache", json={"message": "  "}).status_code == 422
+    with client:  # garde le même moteur entre les requêtes, comme le vrai serveur
+        r = client.post("/api/chat/tache", json={"message": "Comment vont mes actions ?"}).json()
+        assert r["discussion_id"]
+        fin = time.monotonic() + 30
+        while time.monotonic() < fin:
+            etat = client.get(f"/api/chat/tache/{r['tache']}").json()
+            if etat["statut"] != "en_cours":
+                break
+            time.sleep(0.05)
+        assert etat["statut"] == "fini"
+        assert etat["resultat"]["reponse"].startswith("Monsieur, Compte rendu du Commandant Finance")
+        assert client.get("/api/chat/tache/inconnue").status_code == 404
+        assert client.post("/api/chat/tache", json={"message": "  "}).status_code == 422
