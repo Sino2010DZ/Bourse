@@ -1,0 +1,110 @@
+# Fabrique l'installateur Windows de Sentinelle (.exe) sur un PC Windows de GitHub, à chaque modification.
+# Le fichier est publié dans la page « Releases » du dépôt : « Sentinelle pour Windows ».
+name: Sentinelle Windows
+
+on:
+  push:
+    branches: [main, claude/sentinelle-ai-agents-rzy36v]
+    paths: ["sentinelle/**", ".github/workflows/sentinelle-windows.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: sentinelle-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: "1"
+    defaults:
+      run:
+        shell: bash
+        working-directory: sentinelle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer le cerveau Python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt "pyinstaller>=6.11"
+
+      - name: Tests
+        run: python -m pytest -q tests
+
+      - name: Empaqueter le serveur Python
+        run: PYTHON=python scripts/construire-serveur.sh
+
+      - name: Vérifier le serveur empaqueté (démarrage, cerveau Claude, question sans clé)
+        run: |
+          SERVEUR=dist/sentinelle-serveur/sentinelle-serveur.exe
+          CLI=$(find dist/sentinelle-serveur -path "*claude_agent_sdk/_bundled/claude*" -type f ! -name "*.version" | head -1)
+          echo "Cerveau Claude : $CLI"
+          "$CLI" --version
+          export APPDATA="$(pwd -W)/../essai-donnees" && mkdir -p "$APPDATA"
+          env -u ANTHROPIC_API_KEY PORT=8797 "$SERVEUR" &
+          PID=$!
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8797/api/sante && break; sleep 1; done
+          T=$(curl -sf -X POST -H 'Content-Type: application/json' -d '{"message":"Bonjour"}' http://127.0.0.1:8797/api/chat/tache | python -c 'import json,sys; print(json.load(sys.stdin)["tache"])')
+          sleep 2
+          curl -sf http://127.0.0.1:8797/api/chat/tache/$T | tee reponse.json
+          grep -q '"statut":"fini"' reponse.json
+          curl -sf -X POST -H 'X-Sentinelle: arreter' http://127.0.0.1:8797/api/arreter || true
+          sleep 2
+          kill $PID 2>/dev/null || true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Construire l'installateur Windows
+        working-directory: sentinelle/app
+        run: |
+          npm ci
+          npx tauri build --config src-tauri/tauri.app.windows.conf.json
+
+      - name: Renommer l'installateur
+        run: |
+          mkdir -p sortie
+          cp app/src-tauri/target/release/bundle/nsis/*-setup.exe "sortie/Sentinelle-Windows-installateur.exe"
+          ls -lh sortie
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinelle-Windows
+          path: sentinelle/sortie/*.exe
+          retention-days: 14
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinelle-Windows
+          path: sortie
+
+      - name: Publier dans « Releases »
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -lh sortie
+          gh release delete sentinelle-windows --yes --cleanup-tag || true
+          gh release create sentinelle-windows sortie/Sentinelle-Windows-installateur.exe \
+            --target "$GITHUB_SHA" \
+            --title "Sentinelle pour Windows" \
+            --prerelease \
+            --notes "Installateur Windows de Sentinelle, construit automatiquement le $(date -u '+%d.%m.%Y à %H:%M') (UTC).
+
+          Double-cliquez sur **Sentinelle-Windows-installateur.exe**. Si Windows affiche « Windows a protégé votre ordinateur » :
+          « Informations complémentaires » → « Exécuter quand même »."

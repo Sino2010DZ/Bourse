@@ -96,6 +96,13 @@ fn lancer_serveur(app: &AppHandle) -> Option<Child> {
         }
     }
     let mut commande = commande_serveur(app)?;
+    commande.env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8");
+    #[cfg(windows)]
+    {
+        // Pas de fenêtre noire (console) pour le serveur sous Windows.
+        use std::os::windows::process::CommandExt;
+        commande.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
     // Le journal technique du serveur va dans ~/Library/Logs/ch.sentinelle.app/serveur.log
     if let Ok(dossier) = app.path().app_log_dir() {
         let _ = std::fs::create_dir_all(&dossier);

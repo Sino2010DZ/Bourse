@@ -1,6 +1,7 @@
 """Tests de la Phase 1 : serveur local, Grand Chef, journal. Aucun appel payant à Claude."""
 
 import json
+import os
 
 from conftest import fabriquer_reglages
 from fastapi.testclient import TestClient
@@ -86,7 +87,8 @@ def test_coller_la_cle_dans_l_app(tmp_path, monkeypatch):
     assert client.get("/api/sante").json()["cle_api"] is True
     fichier = tmp_path / ".env"
     assert fichier.read_text(encoding="utf-8").strip() == f"ANTHROPIC_API_KEY={cle}"
-    assert oct(fichier.stat().st_mode & 0o777) == "0o600"
+    if os.name != "nt":   # Windows ne gère pas les droits Unix
+        assert oct(fichier.stat().st_mode & 0o777) == "0o600"
 
 
 def test_meme_version_partout():
@@ -96,9 +98,9 @@ def test_meme_version_partout():
     import main
 
     app = Path(__file__).resolve().parent.parent / "app"
-    assert json.loads((app / "src-tauri" / "tauri.conf.json").read_text())["version"] == main.VERSION
-    assert json.loads((app / "package.json").read_text())["version"] == main.VERSION
-    assert f'version = "{main.VERSION}"' in (app / "src-tauri" / "Cargo.toml").read_text()
+    assert json.loads((app / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))["version"] == main.VERSION
+    assert json.loads((app / "package.json").read_text(encoding="utf-8"))["version"] == main.VERSION
+    assert f'version = "{main.VERSION}"' in (app / "src-tauri" / "Cargo.toml").read_text(encoding="utf-8")
 
 
 def test_arret_protege(client):
