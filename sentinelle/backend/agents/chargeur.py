@@ -49,7 +49,8 @@ def lire_agent(chemin: Path) -> FicheAgent:
         raise ErreurAgent(f"{chemin.name} : systeme doit être tous, mac ou windows.")
     outils = entete["outils"] if isinstance(entete["outils"], tuple) else (entete["outils"],)
     return FicheAgent(
-        id=chemin.stem,
+        # « id » facultatif : permet deux fiches (ex. pilotes-mac.md et pilotes-windows.md) pour un même agent.
+        id=entete.get("id") or chemin.stem,
         nom=entete["nom"],
         section=entete["section"],
         role=entete["role"],

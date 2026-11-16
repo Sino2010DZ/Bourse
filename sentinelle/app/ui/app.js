@@ -7,7 +7,7 @@ const API = SERVI_PAR_LE_SERVEUR ? "" : `http://127.0.0.1:${PORT}`;
 const SUGGESTIONS = [
   "Comment vont mes actions ?",
   "Où en sont mes prix Galaxus ?",
-  "Quelle est la tendance d'Aston Martin ?",
+  "Quand est la prochaine course de F1 ?",
   "Qu'est-ce qui bouge fort aujourd'hui ?",
 ];
 
@@ -430,7 +430,7 @@ function afficherBandeau(positions) {
     galaxus.append(document.createTextNode("aucun produit suivi"));
   }
   elements.push(galaxus);
-  for (const [titre, texte] of [["F1", "à construire"], ["Genève", "météo à construire"]]) {
+  for (const [titre, texte] of [["F1", etat.bandeauF1 || "—"], ["Genève", etat.bandeauMeteo || "—"]]) {
     const e = el("span", "element");
     e.append(el("strong", "", titre), document.createTextNode(texte));
     elements.push(e);
@@ -631,6 +631,54 @@ $("fp-confirmer").addEventListener("click", async () => {
   }
 });
 
+// ------------------------------------------------------------ météo de Genève et F1
+
+const jourCourt = (iso) => new Date(iso).toLocaleDateString("fr-CH", { weekday: "short" });
+
+async function chargerMeteo() {
+  const zone = $("meteo");
+  try {
+    const m = await api("/api/meteo");
+    const actuelle = el("div", "meteo-actuelle");
+    actuelle.append(el("span", "icone", m.icone), el("span", "grand", `${Math.round(m.temperature)}°`));
+    const jours = el("div", "meteo-jours");
+    m.jours.slice(1, 4).forEach((j) => jours.append(el("span", "", `${jourCourt(j.date)} ${j.icone} ${Math.round(j.max)}°`)));
+    zone.replaceChildren(actuelle, el("div", "detail", `${m.temps} · ${Math.round(m.jours[0].min)}° / ${Math.round(m.jours[0].max)}°`), jours);
+    zone.title = `Ressenti ${m.ressenti}° · vent ${m.vent_kmh} km/h · pluie ${m.jours[0].pluie_pct} % (source : Open-Meteo)`;
+    etat.bandeauMeteo = `${m.icone} ${Math.round(m.temperature)}° ${m.temps.toLowerCase()}`;
+  } catch {
+    zone.replaceChildren(el("div", "vide", "Météo indisponible."));
+  }
+  afficherBandeau(etat.positions);
+}
+
+function compteARebours(iso) {
+  const ms = new Date(iso) - Date.now();
+  if (ms < 0) return "en cours";
+  const j = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), min = Math.floor((ms % 3600000) / 60000);
+  return j > 0 ? `dans ${j} j ${h} h` : h > 0 ? `dans ${h} h ${min} min` : `dans ${min} min`;
+}
+
+async function chargerF1() {
+  const zone = $("f1");
+  try {
+    const c = await api("/api/f1/prochaine");
+    if (!c.nom) { zone.replaceChildren(el("div", "vide", "Saison terminée.")); return; }
+    const depart = new Date(c.depart);
+    const quand = depart.toLocaleString("fr-CH", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    zone.replaceChildren(
+      el("div", "gp", c.nom.replace(" Grand Prix", "").replace("Grand Prix ", "GP ")),
+      el("div", "detail", quand),
+      el("div", "compte", compteARebours(c.depart))
+    );
+    zone.title = c.seances.map((s) => `${s.nom} : ${new Date(s.debut).toLocaleString("fr-CH", { weekday: "short", hour: "2-digit", minute: "2-digit" })}`).join("\n");
+    etat.bandeauF1 = `${c.nom} ${compteARebours(c.depart)}`;
+  } catch {
+    zone.replaceChildren(el("div", "vide", "Calendrier indisponible."));
+  }
+  afficherBandeau(etat.positions);
+}
+
 // ------------------------------------------------------------ 50 agents
 
 async function chargerAgents() {
@@ -693,6 +741,8 @@ function majReglages() {
   $("theme-clair").value = p.theme_clair;
   $("theme-sombre").value = p.theme_sombre;
   $("budget").value = p.budget_jour_usd;
+  $("dossiers").value = (p.dossiers_autorises || []).join("\n");
+  $("dossiers-erreur").textContent = "";
 }
 
 $("ouvrir-reglages").addEventListener("click", () => { majReglages(); $("reglages").showModal(); });
@@ -708,6 +758,16 @@ for (const id of ["theme-clair", "theme-sombre"]) {
     majReglages();
   });
 }
+$("dossiers").addEventListener("change", async (e) => {
+  const liste = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean);
+  try {
+    await api("/api/preferences", { method: "PUT", body: JSON.stringify({ ...Themes.prefs, dossiers_autorises: liste }) });
+    Themes.prefs.dossiers_autorises = liste;
+    $("dossiers-erreur").textContent = "Enregistré.";
+  } catch (err) {
+    $("dossiers-erreur").textContent = err.message;
+  }
+});
 $("budget").addEventListener("change", async (e) => {
   await Themes.enregistrer({ budget_jour_usd: Number(e.target.value) || 1 });
   afficherQuota(await api("/api/consommation"));
@@ -790,6 +850,10 @@ async function demarrer() {
     chargerAgents();
     chargerActions();
     chargerProduits();
+    chargerMeteo();
+    chargerF1();
+    setInterval(chargerMeteo, 15 * 60 * 1000);
+    setInterval(chargerF1, 5 * 60 * 1000);
     setInterval(chargerActions, 5 * 60 * 1000);
     setInterval(chargerProduits, 30 * 60 * 1000);
     if (sante.cle_api) {

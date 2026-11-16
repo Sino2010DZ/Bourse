@@ -4,7 +4,8 @@
   ce qui couvre la bourse suisse, Londres et New York. Aucun appel à Claude : c'est gratuit.
   Si une action bouge plus que le seuil du radar, une notification Mac est envoyée (une fois par jour et par action).
 - Prix Galaxus : chaque jour à 8h, une seule lecture par produit ; notification si le prix baisse.
-- Briefing du matin (7h30) : ajouté avec la section Organisation.
+- Briefing du matin à 7h30 (rangé dans l'historique + notification).
+- Coup d'envoi : notification ~1 h avant les qualifications, le sprint et la course de F1.
 """
 
 from __future__ import annotations
@@ -49,10 +50,57 @@ async def releve_bourse(bourse: ServiceBourse, portefeuille: Portefeuille, base:
     return alertes
 
 
+async def briefing_du_matin(secretariat, base: BaseDeDonnees, journal, notifier: Notifier) -> str | None:
+    """7h30 : le briefing est écrit, rangé dans l'historique des discussions, et annoncé par une notification."""
+    from journal import Trace
+
+    if not secretariat.reglages.cle_presente:
+        return None
+    texte = await secretariat.briefing(Trace(journal))
+    if not texte:
+        return None
+    maintenant = datetime.now(FUSEAU)
+    ident = base.creer_discussion(f"Briefing du {maintenant:%d.%m.%Y}", maintenant.isoformat(timespec="seconds"))
+    base.ajouter_message(ident, "chef", texte, maintenant.isoformat(timespec="seconds"), ["Briefing"], {})
+    notifier("Sentinelle — Briefing du matin", texte[:220])
+    return texte
+
+
+async def coup_d_envoi(f1, base: BaseDeDonnees, notifier: Notifier, maintenant: datetime | None = None) -> list[str]:
+    """Une notification environ 1 heure avant les qualifications, le sprint et la course de F1 (une seule fois)."""
+    try:
+        course = await f1.prochaine()
+    except Exception:
+        return []
+    if not course:
+        return []
+    maintenant = maintenant or datetime.now(FUSEAU)
+    envoyees = []
+    for seance in course["seances"]:
+        if seance["nom"] not in ("Qualifications", "Sprint", "Course"):
+            continue
+        debut = datetime.fromisoformat(seance["debut"])
+        minutes = (debut - maintenant).total_seconds() / 60
+        cle = f"f1:{course['manche']}:{seance['nom']}"
+        if 0 < minutes <= 75 and not base.alerte_deja_envoyee(cle):
+            message = f"{seance['nom']} du {course['nom']} dans {int(minutes)} min ({debut:%H:%M}, heure de Zurich)."
+            notifier("Sentinelle — Coup d'envoi F1", message)
+            base.noter_alerte(cle, maintenant.isoformat(timespec="minutes"), message)
+            envoyees.append(message)
+    return envoyees
+
+
 def creer_planificateur(
-    bourse: ServiceBourse, portefeuille: Portefeuille, base: BaseDeDonnees, notifier: Notifier, suivi=None
+    bourse: ServiceBourse, portefeuille: Portefeuille, base: BaseDeDonnees, notifier: Notifier, suivi=None,
+    secretariat=None, journal=None, f1=None,
 ) -> AsyncIOScheduler:
     planif = AsyncIOScheduler(timezone=FUSEAU)
+    if secretariat is not None and journal is not None:
+        planif.add_job(briefing_du_matin, CronTrigger(hour=7, minute=30, timezone=FUSEAU),
+                       args=[secretariat, base, journal, notifier], id="briefing", max_instances=1, coalesce=True)
+    if f1 is not None:
+        planif.add_job(coup_d_envoi, CronTrigger(minute="*/15", timezone=FUSEAU),
+                       args=[f1, base, notifier], id="coup_d_envoi", max_instances=1, coalesce=True)
     if suivi is not None:
         # Prix Galaxus : une fois par jour à 8h (heure de Zurich), une requête par produit.
         planif.add_job(

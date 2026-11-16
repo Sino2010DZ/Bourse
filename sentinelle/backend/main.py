@@ -29,13 +29,23 @@ from pydantic import BaseModel, Field
 
 from cerveau import Cerveau, cerveau_claude
 from commandants.achats import CommandantAchats
+from commandants.creation import CommandantAtelier
+from commandants.divertissement import CommandantDetente
+from commandants.entretien import CommandantMaintenance
+from commandants.jeux import CommandantGaming
+from commandants.materiel import CommandantTech
+from commandants.organisation import CommandantSecretariat
+from commandants.renseignement import CommandantVeille
+from commandants.sport import CommandantStade
 from commandants.finance import CommandantFinance
 from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle
 from grand_chef import GrandChef
 from journal import FUSEAU, Journal
 from outils.base_de_donnees import BaseDeDonnees
 from outils.bourse import ServiceBourse, Source
+from outils.f1 import ServiceF1
 from outils.galaxus import ErreurGalaxus
+from outils.meteo import ServiceMeteo
 from outils.portefeuille import ErreurPortefeuille, Portefeuille
 from outils.suivi_prix import Lecteur, SuiviPrix
 from plateforme import systeme
@@ -43,7 +53,7 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
@@ -76,6 +86,8 @@ def creer_app(
     source_bourse: Source | None = None,
     planificateur: bool = True,
     lecteur_galaxus: Lecteur | None = None,
+    meteo: ServiceMeteo | None = None,
+    f1: ServiceF1 | None = None,
 ) -> FastAPI:
     reglages = reglages or charger_reglages()
     cerveau = cerveau or cerveau_claude
@@ -85,9 +97,20 @@ def creer_app(
     preferences = Preferences(reglages.dossier_donnees)
     bourse = ServiceBourse(source_bourse)
     suivi = SuiviPrix(base, lecteur_galaxus)
+    meteo = meteo or ServiceMeteo()
+    f1 = f1 or ServiceF1()
+    secretariat = CommandantSecretariat(reglages, cerveau, meteo, bourse, portefeuille, suivi, f1)
     commandants = {
+        "materiel": CommandantTech(reglages, cerveau),
         "achats": CommandantAchats(reglages, cerveau, suivi, base),
         "bourse": CommandantFinance(reglages, cerveau, bourse, portefeuille),
+        "renseignement": CommandantVeille(reglages, cerveau, base),
+        "sport": CommandantStade(reglages, cerveau, f1),
+        "divertissement": CommandantDetente(reglages, cerveau),
+        "jeux": CommandantGaming(reglages, cerveau),
+        "entretien": CommandantMaintenance(reglages, cerveau, preferences),
+        "organisation": secretariat,
+        "creation": CommandantAtelier(reglages, cerveau),
     }
     chef = GrandChef(reglages, journal, cerveau, commandants)
 
@@ -97,7 +120,9 @@ def creer_app(
         if planificateur:
             from planificateur import creer_planificateur
 
-            planif = creer_planificateur(bourse, portefeuille, base, systeme().notifier, suivi)
+            planif = creer_planificateur(
+                bourse, portefeuille, base, systeme().notifier, suivi, secretariat=secretariat, journal=journal, f1=f1
+            )
             planif.start()
         yield
         if planif:
@@ -338,6 +363,20 @@ def creer_app(
         """Ouvre la page Galaxus du produit dans le navigateur (aucun achat n'est fait)."""
         f = _fiche_ou_404(ident)
         return {"ouvert": systeme().ouvrir_lien(f["url"])}
+
+    @app.get("/api/meteo")
+    async def meteo_geneve() -> dict:
+        try:
+            return await meteo.geneve()
+        except Exception:
+            raise HTTPException(status_code=503, detail="Météo indisponible pour le moment.") from None
+
+    @app.get("/api/f1/prochaine")
+    async def f1_prochaine() -> dict:
+        try:
+            return await f1.prochaine() or {}
+        except Exception:
+            raise HTTPException(status_code=503, detail="Calendrier F1 indisponible pour le moment.") from None
 
     @app.get("/api/alertes")
     def alertes() -> list[dict]:

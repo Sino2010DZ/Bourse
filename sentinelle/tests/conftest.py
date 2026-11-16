@@ -99,6 +99,41 @@ class FauxGalaxus:
         return FicheProduit(nom=f"Produit {ident}", prix=prix, disponible=True)
 
 
+METEO_BRUTE = {
+    "current": {"time": "2026-11-16T18:15", "temperature_2m": 11.9, "apparent_temperature": 9.8, "weather_code": 61,
+                "wind_speed_10m": 9.7, "precipitation": 0.4},
+    "daily": {"time": ["2026-11-16", "2026-11-17"], "weather_code": [80, 3], "temperature_2m_max": [13.5, 9.0],
+              "temperature_2m_min": [10.5, 4.2], "precipitation_probability_max": [93, 20],
+              "sunrise": ["2026-11-16T07:37", "2026-11-17T07:38"], "sunset": ["2026-11-16T17:02", "2026-11-17T17:01"]},
+}
+
+
+def calendrier_f1(dates_courses=("2026-11-22", "2026-12-06")):
+    courses = []
+    for i, date in enumerate(dates_courses, start=21):
+        courses.append({
+            "round": str(i), "raceName": f"Grand Prix {i}", "date": date, "time": "13:00:00Z",
+            "Circuit": {"circuitName": f"Circuit {i}", "Location": {"locality": "Ville", "country": "Pays"}},
+            "Qualifying": {"date": date[:-2] + f"{int(date[-2:]) - 1:02d}", "time": "14:00:00Z"},
+        })
+    return {"MRData": {"RaceTable": {"Races": courses}}}
+
+
+def lecteur_f1(url):
+    if url.endswith("current.json"):
+        return calendrier_f1()
+    if "results" in url:
+        return {"MRData": {"RaceTable": {"Races": [{"raceName": "Brazilian Grand Prix", "date": "2026-11-08", "Results": [
+            {"position": "1", "Driver": {"givenName": "Lando", "familyName": "Norris"}, "Constructor": {"name": "McLaren"},
+             "points": "25", "status": "Finished"}]}]}}}
+    if "driverstandings" in url:
+        return {"MRData": {"StandingsTable": {"StandingsLists": [{"DriverStandings": [
+            {"position": "1", "Driver": {"givenName": "Andrea Kimi", "familyName": "Antonelli"},
+             "Constructors": [{"name": "Mercedes"}], "points": "390", "wins": "9"}]}]}}}
+    return {"MRData": {"StandingsTable": {"StandingsLists": [{"ConstructorStandings": [
+        {"position": "1", "Constructor": {"name": "Mercedes"}, "points": "600", "wins": "11"}]}]}}}
+
+
 @pytest.fixture
 def galaxus():
     return FauxGalaxus()
@@ -120,7 +155,13 @@ def client(tmp_path, cerveau, source, galaxus):
 
     from main import creer_app
 
-    return TestClient(creer_app(fabriquer_reglages(tmp_path), cerveau, source, planificateur=False, lecteur_galaxus=galaxus))
+    from outils.f1 import ServiceF1
+    from outils.meteo import ServiceMeteo
+
+    return TestClient(creer_app(
+        fabriquer_reglages(tmp_path), cerveau, source, planificateur=False, lecteur_galaxus=galaxus,
+        meteo=ServiceMeteo(lambda url: METEO_BRUTE), f1=ServiceF1(lecteur_f1),
+    ))
 
 
 def _intraday(self, ticker, periode):

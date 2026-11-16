@@ -6,16 +6,16 @@ statut : « active » (point vert), « en_preparation » (point orange), « a_co
 from __future__ import annotations
 
 SECTIONS: list[dict] = [
-    {"id": "materiel", "nom": "Matériel PC", "icone": "🔧", "commandant": "Commandant Tech", "statut": "a_construire"},
+    {"id": "materiel", "nom": "Matériel PC", "icone": "🔧", "commandant": "Commandant Tech", "statut": "active"},
     {"id": "achats", "nom": "Prix & Achats", "icone": "💰", "commandant": "Commandant Achats", "statut": "active"},
     {"id": "bourse", "nom": "Bourse", "icone": "📈", "commandant": "Commandant Finance", "statut": "active"},
-    {"id": "renseignement", "nom": "Renseignement", "icone": "🌐", "commandant": "Commandant Veille", "statut": "a_construire"},
-    {"id": "sport", "nom": "Sport", "icone": "🏁", "commandant": "Commandant Stade", "statut": "a_construire"},
-    {"id": "divertissement", "nom": "Divertissement", "icone": "🎬", "commandant": "Commandant Détente", "statut": "a_construire"},
-    {"id": "jeux", "nom": "Jeux vidéo", "icone": "🎮", "commandant": "Commandant Gaming", "statut": "a_construire"},
-    {"id": "entretien", "nom": "Entretien", "icone": "🧹", "commandant": "Commandant Maintenance", "statut": "a_construire"},
-    {"id": "organisation", "nom": "Organisation", "icone": "📅", "commandant": "Commandant Secrétariat", "statut": "a_construire"},
-    {"id": "creation", "nom": "Création", "icone": "🚀", "commandant": "Commandant Atelier", "statut": "a_construire"},
+    {"id": "renseignement", "nom": "Renseignement", "icone": "🌐", "commandant": "Commandant Veille", "statut": "active"},
+    {"id": "sport", "nom": "Sport", "icone": "🏁", "commandant": "Commandant Stade", "statut": "active"},
+    {"id": "divertissement", "nom": "Divertissement", "icone": "🎬", "commandant": "Commandant Détente", "statut": "active"},
+    {"id": "jeux", "nom": "Jeux vidéo", "icone": "🎮", "commandant": "Commandant Gaming", "statut": "active"},
+    {"id": "entretien", "nom": "Entretien", "icone": "🧹", "commandant": "Commandant Maintenance", "statut": "active"},
+    {"id": "organisation", "nom": "Organisation", "icone": "📅", "commandant": "Commandant Secrétariat", "statut": "active"},
+    {"id": "creation", "nom": "Création", "icone": "🚀", "commandant": "Commandant Atelier", "statut": "active"},
 ]
 
 

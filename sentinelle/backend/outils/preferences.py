@@ -13,6 +13,7 @@ DEFAUTS = {
     "theme_clair": "ivoire",
     "theme_sombre": "nuit-or",
     "budget_jour_usd": 1.0,    # jauge « Quota du jour »
+    "dossiers_autorises": [],  # seuls dossiers que les agents Fichiers ont le droit de lire
 }
 _ID_THEME = re.compile(r"^[a-z0-9-]{1,40}$")
 
@@ -34,6 +35,25 @@ def valider(donnees: dict) -> dict:
     except (TypeError, ValueError):
         raise ErreurPreferences("Le budget doit être un nombre.") from None
     propre["budget_jour_usd"] = round(min(max(budget, 0.05), 100.0), 2)
+    dossiers = donnees.get("dossiers_autorises", [])
+    if not isinstance(dossiers, list):
+        raise ErreurPreferences("La liste des dossiers est invalide.")
+    propres = []
+    for d in dossiers:
+        d = str(d).strip()
+        if not d:
+            continue
+        if len(d) > 300 or "\x00" in d:
+            raise ErreurPreferences("Chemin de dossier invalide.")
+        if d in ("/", "\\") or (len(d) <= 3 and d[1:2] == ":"):
+            raise ErreurPreferences("Choisissez un dossier précis, pas tout le disque.")
+        try:
+            if Path(d).expanduser().resolve() == Path.home().resolve():
+                raise ErreurPreferences("Choisissez un sous-dossier précis (ex. Téléchargements), pas tout le dossier personnel.")
+        except OSError:
+            raise ErreurPreferences("Chemin de dossier invalide.") from None
+        propres.append(d)
+    propre["dossiers_autorises"] = propres[:10]
     return propre
 
 

@@ -24,6 +24,32 @@ En cas de souci, le journal technique est dans `~/Library/Logs/ch.sentinelle.app
 L'application est reconstruite automatiquement sur un Mac de GitHub à chaque modification
 (fichier `.github/workflows/sentinelle-mac.yml`).
 
+## Les 50 agents
+
+**46 agents sur 50 sont en service.** Les 4 derniers ont besoin d'accéder à un compte personnel de Monsieur et
+seront branchés plus tard, avec son autorisation : **Agenda** (Calendrier Apple / Google), **Rappels**
+(Apple / Outlook), **Courrier** (Gmail) et **DJ** (Spotify).
+
+| Section | Agents en service | Sources |
+|---|---|---|
+| 🔧 Matériel PC | Conseiller, Compatibilité, Testeur, Pilotes 🍎/🪟, Performance 🍎/🪟 | infos de l'ordinateur, web |
+| 💰 Prix & Achats | Chasseur, Historien, Alarme, Comparateur, Black Friday | Galaxus, web |
+| 📈 Bourse | Trader, Journaliste, Comptable, Analyste, Radar | Yahoo Finance |
+| 🌐 Renseignement | Éclaireur, Résumeur, Vérificateur, Traducteur, Archiviste | web, archives |
+| 🏁 Sport | Stand F1, Courtside, Tribune, Coup d'envoi, Statisticien | Jolpica (F1 officiel), web |
+| 🎬 Divertissement | Découvreur, Critique, Sorties, Genève Sorties | web |
+| 🎮 Jeux vidéo | Promo, Patch, Mods, Coach, Launcher 🍎/🪟 | jeux installés (Steam, Epic), web |
+| 🧹 Entretien | Rangeur, Nettoyeur 🍎/🪟, Sauvegarde 🍎/🪟, Thermomètre 🍎/🪟, Éclairagiste 🍎/🪟 | ordinateur (lecture seule) |
+| 📅 Organisation | Météo, Briefing | Open-Meteo, toutes les sections |
+| 🚀 Création | Codeur, Designer, Idées, Débugueur, Chef de projet | — |
+
+- **Recherche web** : les agents marqués « web » cherchent et lisent des pages publiques, sans jamais se connecter
+  à un compte, et citent leurs sources. Une question avec recherche coûte environ 3 à 6 centimes.
+- **Entretien en lecture seule** : rien n'est jamais trié, nettoyé ni supprimé. Le Rangeur ne lit que les dossiers
+  choisis dans **Réglages › Dossiers**.
+- **Automatique** : briefing du matin à 7h30 (dans l'historique + notification), notification ~1 h avant les
+  qualifications et la course de F1.
+
 ## Prix & Achats — Galaxus (Phase 3)
 
 ![Courbe de prix](docs/phase3-courbe-prix.png)
@@ -73,6 +99,8 @@ le dossier `ui`). L'interface ne contient aucune couleur : elle lit seulement le
 | 2 | Section Bourse (Commandant Finance + 5 agents, Yahoo Finance) | ✅ |
 | — | Nouvelle interface et 20 thèmes, historique des discussions | ✅ |
 | 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | ✅ |
+| 4 | Les autres sections : 46 agents sur 50 | ✅ |
+| — | Version Windows (installateur .exe) | ✅ |
 
 ## La section Bourse (Phase 2)
 

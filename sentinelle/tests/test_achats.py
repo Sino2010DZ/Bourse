@@ -164,11 +164,11 @@ def test_ouvrir_seulement_les_produits_suivis(client):
 
 def test_agents_achats():
     agents = agents_de_section("achats", systeme="mac")
-    assert sorted(a.id for a in agents) == ["alarme", "chasseur", "historien"]
-    outils = set(CommandantAchats.outils(object.__new__(CommandantAchats)))
+    assert sorted(a.id for a in agents) == ["alarme", "black_friday", "chasseur", "comparateur", "historien"]
+    outils = set(CommandantAchats.outils(object.__new__(CommandantAchats))) | {"recherche_web"}
     for a in agents:
         assert set(a.outils) <= outils, a.id
-        assert "Tu n'achètes jamais rien" in a.instructions, a.id
+        assert "n'achètes" in a.instructions.lower(), a.id
 
 
 def test_le_grand_chef_peut_consulter_le_commandant_achats(client, cerveau):

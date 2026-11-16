@@ -394,3 +394,16 @@ h2 { margin: 0; font-family: var(--police-titre); font-size: 13px; font-weight: 
   .bandeau { padding-left: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .fondu, .fondu * { transition: none !important; } }
+
+/* ---------- Météo et F1 ---------- */
+.meteo-actuelle { display: flex; align-items: center; gap: 8px; }
+.meteo-actuelle .grand { font-size: 24px; font-weight: 600; font-family: var(--police-titre); }
+.meteo-actuelle .icone { font-size: 22px; }
+.meteo .detail, .f1 .detail { font-size: 11.5px; color: var(--texte2); }
+.meteo-jours { display: flex; gap: 8px; margin-top: 6px; font-size: 11px; color: var(--texte3); }
+.f1 .gp { font-weight: 600; font-size: 13px; }
+.f1 .compte { font-size: 12px; color: var(--accent-texte); margin-top: 2px; }
+.auto textarea {
+  display: block; width: 100%; margin-top: 6px; background: var(--surface); border: 1px solid var(--ligne);
+  border-radius: 8px; padding: 6px 8px; color: var(--texte); font-size: 12.5px; resize: vertical;
+}

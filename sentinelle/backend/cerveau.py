@@ -21,6 +21,7 @@ class Demande:
     modele: str
     effort: str = "low"
     outils: list[Any] = field(default_factory=list)   # outils @tool du SDK (Grand Chef seulement)
+    outils_integres: list[str] = field(default_factory=list)  # ex. ["WebSearch", "WebFetch"] (recherche web)
     format_json: dict | None = None                   # schéma JSON si on veut une réponse structurée
     tours_max: int = 1
 
@@ -57,13 +58,15 @@ async def cerveau_claude(d: Demande) -> Reponse:
         system_prompt=d.systeme,
         model=d.modele,
         effort=d.effort,
-        tools=[],              # pas d'outils Claude Code (ni fichiers, ni terminal, ni web)
+        tools=list(d.outils_integres),   # par défaut aucun outil Claude Code ; jamais fichiers ni terminal
         setting_sources=[],    # n'utilise pas les réglages Claude Code de l'ordinateur
         max_turns=d.tours_max,
     )
+    if d.outils_integres:
+        options.allowed_tools = list(d.outils_integres)
     if d.outils:
         options.mcp_servers = {NOM_SERVEUR_OUTILS: create_sdk_mcp_server(NOM_SERVEUR_OUTILS, tools=d.outils)}
-        options.allowed_tools = [f"mcp__{NOM_SERVEUR_OUTILS}__{o.name}" for o in d.outils]
+        options.allowed_tools = options.allowed_tools + [f"mcp__{NOM_SERVEUR_OUTILS}__{o.name}" for o in d.outils]
     if d.format_json:
         options.output_format = {"type": "json_schema", "schema": d.format_json}
 

@@ -22,6 +22,15 @@ from journal import Trace, maintenant_texte
 # Un outil reçoit la mission et renvoie des données (dict/list) que l'agent lira.
 Outil = Callable[[str], Awaitable[Any]]
 
+# Outils « intégrés » : l'agent les utilise lui-même pendant sa réflexion (et non le programme avant).
+# « recherche_web » = chercher sur le web et lire des pages publiques (jamais de connexion à un compte).
+OUTILS_INTEGRES = {"recherche_web": ["WebSearch", "WebFetch"]}
+REGLES_WEB = (
+    "\n\nRecherche web : lis seulement des pages publiques, ne te connecte à aucun compte, "
+    "ne remplis aucun formulaire et n'achète rien. Cite tes sources (nom du site et lien). "
+    "Si tu ne trouves pas l'information de façon fiable, dis-le."
+)
+
 
 class Commandant:
     section: str = ""
@@ -75,6 +84,8 @@ class Commandant:
         outils = self.outils()
         donnees = {}
         for nom in agent.outils:
+            if nom in OUTILS_INTEGRES:
+                continue
             if nom not in deja:
                 if nom not in outils:
                     deja[nom] = {"erreur": f"outil « {nom} » indisponible"}
@@ -87,14 +98,20 @@ class Commandant:
         return donnees
 
     async def lancer_agent(self, agent: FicheAgent, mission: str, donnees: dict, trace: Trace) -> tuple[FicheAgent, str]:
+        integres = [o for nom in agent.outils for o in OUTILS_INTEGRES.get(nom, [])]
         demande = Demande(
             qui=f"{self.section}/{agent.id}",
-            systeme=agent.instructions,
+            systeme=agent.instructions + (REGLES_WEB if integres else ""),
+            outils_integres=integres,
+            tours_max=10 if integres else 1,
             prompt=(
                 f"Nous sommes le {maintenant_texte()}.\n\n"
-                f"Mission de ton commandant : {mission}\n\n"
-                "Données fournies par le programme (chiffres exacts) :\n"
-                f"```json\n{json.dumps(donnees, ensure_ascii=False, default=str)}\n```"
+                f"Mission de ton commandant : {mission}\n\n" + (
+                    "Données fournies par le programme (chiffres exacts) :\n"
+                    f"```json\n{json.dumps(donnees, ensure_ascii=False, default=str)}\n```"
+                    if donnees
+                    else ""
+                )
             ),
             modele=self.reglages.modele_agents,
         )

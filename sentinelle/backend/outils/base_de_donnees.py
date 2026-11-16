@@ -50,6 +50,12 @@ CREATE TABLE IF NOT EXISTS prix (
     source      TEXT NOT NULL,      -- « auto » (lu sur Galaxus) ou « manuel » (saisi par Monsieur)
     PRIMARY KEY (produit_id, horodatage)
 );
+CREATE TABLE IF NOT EXISTS archives (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    horodatage  TEXT NOT NULL,
+    sujet       TEXT NOT NULL,
+    contenu     TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS alertes (
     cle         TEXT PRIMARY KEY,   -- ex. « radar:AMD:2026-11-14 » : une seule alerte par jour et par action
     horodatage  TEXT NOT NULL,
@@ -216,3 +222,21 @@ class BaseDeDonnees:
                 "SELECT horodatage, prix, source FROM prix WHERE produit_id = ? ORDER BY horodatage", (produit_id,)
             ).fetchall()
         return [dict(l) for l in lignes]
+
+    # ------------------------------------------------------------ archives (section Renseignement)
+
+    def archiver(self, horodatage: str, sujet: str, contenu: str) -> int:
+        with closing(self._connexion()) as c, c:
+            cur = c.execute("INSERT INTO archives (horodatage, sujet, contenu) VALUES (?, ?, ?)", (horodatage, sujet[:200], contenu[:20000]))
+            return int(cur.lastrowid)
+
+    def archives(self, recherche: str = "", limite: int = 20) -> list[dict]:
+        requete, params = "SELECT * FROM archives", []
+        if recherche.strip():
+            requete += " WHERE sujet LIKE ? OR contenu LIKE ?"
+            motif = f"%{recherche.strip()}%"
+            params += [motif, motif]
+        requete += " ORDER BY id DESC LIMIT ?"
+        params.append(limite)
+        with closing(self._connexion()) as c:
+            return [dict(l) for l in c.execute(requete, params).fetchall()]

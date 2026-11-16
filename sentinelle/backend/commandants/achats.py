@@ -19,7 +19,8 @@ class CommandantAchats(Commandant):
     nom = "Commandant Achats"
     description = (
         "Prix & Achats : produits Galaxus suivis par Monsieur, prix actuel en CHF, historique et courbe des prix, "
-        "baisses de prix et alertes. Ne fait jamais d'achat."
+        "baisses de prix et alertes, comparaison avec d'autres sites suisses, grosses promotions (Black Friday). "
+        "Ne fait jamais d'achat."
     )
 
     def __init__(self, reglages: Reglages, cerveau: Cerveau, suivi: SuiviPrix, base: BaseDeDonnees) -> None:

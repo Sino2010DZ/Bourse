@@ -128,17 +128,17 @@
       <div class="duo">
         <section class="bloc">
           <div class="bloc-entete"><h2>Genève</h2></div>
-          <div class="vide">Météo à construire.</div>
+          <div id="meteo" class="meteo"><div class="vide">Chargement…</div></div>
         </section>
         <section class="bloc">
           <div class="bloc-entete"><h2>F1</h2></div>
-          <div class="vide">Calendrier à construire.</div>
+          <div id="f1" class="f1"><div class="vide">Chargement…</div></div>
         </section>
       </div>
 
       <section class="bloc">
         <div class="bloc-entete"><h2>Agenda du jour</h2></div>
-        <div class="vide">Section Organisation à construire.</div>
+        <div class="vide">Agenda à connecter (Calendrier Apple / Google) — avec votre autorisation.</div>
       </section>
 
       <section class="bloc">
@@ -150,7 +150,7 @@
         <div class="bloc-entete"><h2>Musique · Spotify</h2></div>
         <div class="musique">
           <div class="pochette" aria-hidden="true"></div>
-          <div class="musique-texte"><div>Rien en cours</div><div class="discret">Section Divertissement à construire</div></div>
+          <div class="musique-texte"><div>Rien en cours</div><div class="discret">Spotify à connecter — avec votre autorisation</div></div>
           <button type="button" class="outil" disabled title="Pause (bientôt)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
           </button>
@@ -183,6 +183,13 @@
           <label>Le jour <select id="theme-clair"></select></label>
           <label>Le soir <select id="theme-sombre"></select></label>
         </div>
+      </fieldset>
+
+      <fieldset class="auto">
+        <label>Dossiers que les agents d'Entretien peuvent lire (un par ligne, lecture seule)
+          <textarea id="dossiers" rows="3" placeholder="Exemple : C:\Users\Moi\Downloads"></textarea>
+        </label>
+        <span class="formulaire-erreur" id="dossiers-erreur"></span>
       </fieldset>
 
       <fieldset class="auto">
