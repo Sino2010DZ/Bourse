@@ -87,7 +87,7 @@ def test_une_requete_par_seconde_maximum(monkeypatch):
     debut = time.monotonic()
     for _ in range(3):
         s._patienter()
-    assert time.monotonic() - debut >= 0.4
+    assert time.monotonic() - debut >= 0.35   # marge : l horloge de Windows est moins précise (~15 ms)
 
 
 # ---------------------------------------------------------------- portefeuille (API)
