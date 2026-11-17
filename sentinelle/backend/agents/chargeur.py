@@ -19,6 +19,7 @@ class FicheAgent:
     outils: tuple[str, ...]
     systeme: str       # « tous », « mac » ou « windows »
     instructions: str
+    actions: tuple[str, ...] = ()   # actions que l'agent peut PROPOSER (exécutées seulement après « Confirmer »)
 
 
 class ErreurAgent(ValueError):
@@ -57,6 +58,7 @@ def lire_agent(chemin: Path) -> FicheAgent:
         outils=outils,
         systeme=entete["systeme"],
         instructions=morceaux[2].strip(),
+        actions=tuple(a for a in (entete.get("actions") or ()) if a) if isinstance(entete.get("actions"), tuple) else (),
     )
 
 

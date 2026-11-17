@@ -424,3 +424,18 @@ h2 { margin: 0; font-family: var(--police-titre); font-size: 13px; font-weight: 
 }
 .etat-compte { font-size: 12px; color: var(--accent-texte); }
 .etat-compte button { margin-left: 8px; }
+
+/* ---------- Actions à confirmer, pièces jointes, astuce de dictée ---------- */
+.action-proposee {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--accent); font-size: 13px;
+}
+.action-proposee .quoi { flex: 1; min-width: 200px; }
+.action-proposee .quoi::before { content: "⚑ "; color: var(--accent-texte); }
+.action-proposee.traitee { border-color: var(--ligne); color: var(--texte2); }
+.action-proposee .etat { font-size: 12px; color: var(--accent-texte); }
+.pieces { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.pieces span { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--ligne); color: var(--texte2); }
+.pieces button { border: 0; background: none; color: var(--texte3); cursor: pointer; margin-left: 4px; }
+.astuce { font-size: 12px; color: var(--texte2); background: var(--surface); border: 1px solid var(--ligne); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+img.pochette { object-fit: cover; }

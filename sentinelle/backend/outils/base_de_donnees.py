@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS rappels (
     fait        INTEGER NOT NULL DEFAULT 0,
     notifie     INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS actions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    type        TEXT NOT NULL,
+    description TEXT NOT NULL,
+    donnees     TEXT NOT NULL,      -- JSON
+    statut      TEXT NOT NULL DEFAULT 'en_attente',   -- en_attente, faite, annulee, echec
+    resultat    TEXT NOT NULL DEFAULT '',
+    cree        TEXT NOT NULL,
+    traitee     TEXT
+);
 CREATE TABLE IF NOT EXISTS alertes (
     cle         TEXT PRIMARY KEY,   -- ex. « radar:AMD:2026-11-14 » : une seule alerte par jour et par action
     horodatage  TEXT NOT NULL,
@@ -275,3 +285,26 @@ class BaseDeDonnees:
     def supprimer_rappel(self, ident: int) -> None:
         with closing(self._connexion()) as c, c:
             c.execute("DELETE FROM rappels WHERE id = ?", (ident,))
+
+    # ------------------------------------------------------------ actions à confirmer
+
+    def creer_action(self, type_action: str, description: str, donnees: dict, cree: str) -> int:
+        with closing(self._connexion()) as c, c:
+            return int(c.execute(
+                "INSERT INTO actions (type, description, donnees, cree) VALUES (?, ?, ?, ?)",
+                (type_action, description[:500], json.dumps(donnees, ensure_ascii=False), cree),
+            ).lastrowid)
+
+    def action(self, ident: int) -> dict | None:
+        with closing(self._connexion()) as c:
+            l = c.execute("SELECT * FROM actions WHERE id = ?", (ident,)).fetchone()
+        return {**dict(l), "donnees": json.loads(l["donnees"])} if l else None
+
+    def changer_statut_action(self, ident: int, de: str, vers: str, resultat: str = "", quand: str | None = None) -> bool:
+        """Change le statut seulement s'il vaut encore « de » (empêche d'exécuter deux fois la même action)."""
+        with closing(self._connexion()) as c, c:
+            cur = c.execute(
+                "UPDATE actions SET statut = ?, resultat = ?, traitee = COALESCE(?, traitee) WHERE id = ? AND statut = ?",
+                (vers, resultat[:2000], quand, ident, de),
+            )
+            return cur.rowcount == 1

@@ -67,6 +67,10 @@ class Trace:
     def __init__(self, journal: Journal) -> None:
         self.journal = journal
         self.etapes: list[dict] = []
+        self.actions: list[dict] = []   # actions proposées par les agents, en attente du « Confirmer » de Monsieur
+
+    def proposer(self, type_action: str, description: str, donnees: dict) -> None:
+        self.actions.append({"type": type_action, "description": description, "donnees": donnees})
 
     def noter(self, qui: str, demande: str, reponse) -> None:
         entree = Entree(

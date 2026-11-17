@@ -1,6 +1,6 @@
 [package]
 name = "sentinelle"
-version = "0.6.0"
+version = "0.7.0"
 description = "Sentinelle — votre armée d'agents IA"
 edition = "2021"
 

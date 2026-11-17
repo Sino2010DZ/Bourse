@@ -59,15 +59,18 @@
 
       <div class="bas">
         <div class="suggestions" id="suggestions"></div>
+        <div class="pieces" id="pieces"></div>
+        <div class="astuce" id="astuce" hidden></div>
         <form class="saisie" id="formulaire">
           <textarea id="message" rows="1" placeholder="Demandez au Grand Chef, Monsieur…" autocomplete="off"></textarea>
           <div class="outils">
-            <button type="button" class="outil" disabled title="Joindre un fichier (bientôt)">
+            <input type="file" id="fichier" hidden accept=".txt,.md,.csv,.json,.log,.py,.js,.ts,.html,.css,.xml,.yml,.yaml,.ini,.toml,.rs,.java,.c,.cpp,.cs,.go,.php,.sql,.sh,.bat,.ps1">
+            <button type="button" class="outil" id="joindre" title="Joindre un fichier texte (code, notes, tableau CSV…)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>
             </button>
             <select id="section" class="choix-section" title="Section visée"></select>
             <span class="espace"></span>
-            <button type="button" class="outil" disabled title="Dicter (bientôt)">
+            <button type="button" class="outil" id="dicter" title="Dicter">
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
             </button>
             <button id="envoyer" class="envoyer" type="submit" aria-label="Envoyer">
@@ -158,10 +161,14 @@
       <section class="bloc">
         <div class="bloc-entete"><h2>Musique · Spotify</h2></div>
         <div class="musique">
-          <div class="pochette" aria-hidden="true"></div>
-          <div class="musique-texte"><div>Rien en cours</div><div class="discret">Spotify à connecter — avec votre autorisation</div></div>
-          <button type="button" class="outil" disabled title="Pause (bientôt)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
+          <img class="pochette" id="pochette" alt="" hidden>
+          <div class="pochette" id="pochette-vide" aria-hidden="true"></div>
+          <div class="musique-texte"><div id="musique-titre">Rien en cours</div><div class="discret" id="musique-artiste">Spotify à connecter — Réglages › Comptes</div></div>
+          <button type="button" class="outil" id="musique-lecture" disabled title="Pause / lecture">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="icone-lecture" d="M9 5v14M15 5v14"/></svg>
+          </button>
+          <button type="button" class="outil" id="musique-suivant" disabled title="Titre suivant">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5l9 7-9 7zM18 5v14"/></svg>
           </button>
         </div>
       </section>
@@ -218,6 +225,14 @@
           </span>
         </label>
         <span class="etat-compte" id="etat-gmail"></span>
+        <label>Spotify — Client ID de votre application (developer.spotify.com › Dashboard ; adresse de retour :
+          http://127.0.0.1:8765/api/spotify/retour)
+          <span class="ligne-compte">
+            <input id="compte-spotify" type="text" placeholder="32 caractères" autocomplete="off">
+            <button type="button" class="bouton-accent" id="connecter-spotify">Connecter</button>
+          </span>
+        </label>
+        <span class="etat-compte" id="etat-spotify"></span>
       </fieldset>
 
       <fieldset class="auto">

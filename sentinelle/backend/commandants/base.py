@@ -41,6 +41,17 @@ def regle_perimetre(agent: FicheAgent) -> str:
     )
 
 
+class ActionImpossible(ValueError):
+    """Une action proposée par un agent est refusée par le programme (paramètres invalides, interdit…)."""
+
+
+REGLES_ACTIONS = (
+    "\n\nActions : tu peux PROPOSER une action dans « actions » (type et paramètres en JSON dans « parametres_json ») "
+    "seulement si Monsieur la demande. Elle ne sera exécutée qu'après son clic sur « Confirmer » : dans « reponse », "
+    "dis qu'elle attend sa confirmation, jamais qu'elle est faite."
+)
+
+
 class Commandant:
     section: str = ""
     nom: str = ""
@@ -106,13 +117,54 @@ class Commandant:
             donnees[nom] = deja[nom]
         return donnees
 
+    async def preparer_action(self, type_action: str, parametres: dict) -> tuple[str, dict]:
+        """À définir par les commandants dont les agents proposent des actions.
+        Renvoie (description lisible, données pour l'exécution) ou lève ActionImpossible."""
+        raise ActionImpossible("action inconnue")
+
+    def _schema_actions(self, agent: FicheAgent) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "reponse": {"type": "string"},
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"type": {"type": "string", "enum": list(agent.actions)}, "parametres_json": {"type": "string"}},
+                        "required": ["type", "parametres_json"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["reponse", "actions"],
+            "additionalProperties": False,
+        }
+
+    async def _traiter_actions(self, reponse: dict, trace: Trace) -> str:
+        lignes = [str(reponse.get("reponse", "")).strip()]
+        for a in (reponse.get("actions") or [])[:3]:
+            try:
+                parametres = json.loads(a.get("parametres_json") or "{}")
+                if not isinstance(parametres, dict):
+                    raise ActionImpossible("paramètres illisibles")
+                description, donnees = await self.preparer_action(a.get("type", ""), parametres)
+            except (ValueError, ActionImpossible) as e:
+                lignes.append(f"(Action non préparée : {e}.)")
+                continue
+            trace.proposer(a["type"], description, donnees)
+            lignes.append(f"Action préparée, en attente du bouton « Confirmer » de Monsieur : {description}")
+        return "\n".join(l for l in lignes if l)
+
     async def lancer_agent(self, agent: FicheAgent, mission: str, donnees: dict, trace: Trace) -> tuple[FicheAgent, str]:
         integres = [o for nom in agent.outils for o in OUTILS_INTEGRES.get(nom, [])]
         demande = Demande(
             qui=f"{self.section}/{agent.id}",
-            systeme=agent.instructions + (REGLES_WEB if integres else "") + regle_perimetre(agent),
+            systeme=agent.instructions + (REGLES_WEB if integres else "") + (REGLES_ACTIONS if agent.actions else "")
+            + regle_perimetre(agent),
             outils_integres=integres,
-            tours_max=10 if integres else 1,
+            format_json=self._schema_actions(agent) if agent.actions else None,
+            tours_max=10 if integres else (2 if agent.actions else 1),
             prompt=(
                 f"Nous sommes le {maintenant_texte()}.\n\n"
                 f"Mission de ton commandant : {mission}\n\n" + (
@@ -126,7 +178,11 @@ class Commandant:
         )
         r = await self.cerveau(demande)
         trace.noter(demande.qui, mission, r)
-        return agent, ("(rapport indisponible)" if r.erreur else r.texte)
+        if r.erreur:
+            return agent, "(rapport indisponible)"
+        if agent.actions and isinstance(r.donnees, dict):
+            return agent, await self._traiter_actions(r.donnees, trace)
+        return agent, r.texte
 
     async def resumer(self, mission: str, rapports: list[tuple[FicheAgent, str]], trace: Trace) -> str:
         if len(rapports) == 1:

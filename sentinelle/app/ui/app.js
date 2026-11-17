@@ -98,7 +98,33 @@ function messageMoi(texte) {
   return m;
 }
 
-function messageChef(texte, { agents = [], meta = null, erreur = false, attente = false, dernier = false } = {}) {
+function blocAction(a) {
+  const bloc = el("div", "action-proposee" + (a.statut === "en_attente" ? "" : " traitee"));
+  bloc.append(el("span", "quoi", a.description.charAt(0).toUpperCase() + a.description.slice(1)));
+  if (a.statut === "en_attente") {
+    const annuler = el("button", "lien", "Annuler");
+    const confirmer = el("button", "bouton-accent", "Confirmer");
+    annuler.type = confirmer.type = "button";
+    const traiter = async (quoi) => {
+      annuler.disabled = confirmer.disabled = true;
+      confirmer.textContent = quoi === "confirmer" ? "En cours…" : confirmer.textContent;
+      try {
+        bloc.replaceWith(blocAction(await api(`/api/actions/${a.id}/${quoi}`, { method: "POST" })));
+      } catch (err) {
+        bloc.append(el("span", "etat", err.message));
+      }
+    };
+    annuler.addEventListener("click", () => traiter("annuler"));
+    confirmer.addEventListener("click", () => traiter("confirmer"));
+    bloc.append(annuler, confirmer);
+  } else {
+    const libelle = { faite: "✓ Fait", annulee: "Annulée", echec: "Échec", en_cours: "En cours…" }[a.statut] || a.statut;
+    bloc.append(el("span", "etat", a.resultat ? `${libelle} — ${a.resultat}` : libelle));
+  }
+  return bloc;
+}
+
+function messageChef(texte, { agents = [], meta = null, erreur = false, attente = false, dernier = false, actions = [] } = {}) {
   const m = el("div", "message chef" + (erreur ? " erreur" : "") + (attente ? " attente" : ""));
   const signature = el("div", "signature");
   const pastille = el("span", "pastille-chef");
@@ -107,6 +133,7 @@ function messageChef(texte, { agents = [], meta = null, erreur = false, attente 
   const corps = el("div", "texte");
   remplirTexte(corps, texte);
   m.append(signature, corps);
+  actions.forEach((a) => m.append(blocAction(a)));
 
   if (!attente) {
     const pied = el("div", "pied-message");
@@ -203,6 +230,7 @@ async function demander(corps, attente) {
       meta: { duree_ms: r.duree_ms, cout_usd: r.cout_usd },
       erreur: r.erreur,
       dernier: true,
+      actions: r.actions || [],
     });
     afficherQuota(r.consommation);
     chargerHistorique();
@@ -216,8 +244,55 @@ async function demander(corps, attente) {
   }
 }
 
+const pieces = [];   // pièces jointes texte de la prochaine question
+
+function afficherPieces() {
+  $("pieces").replaceChildren(
+    ...pieces.map((p, i) => {
+      const puce = el("span", "", `📎 ${p.nom}`);
+      const x = el("button", "", "×");
+      x.type = "button";
+      x.title = "Retirer";
+      x.addEventListener("click", () => { pieces.splice(i, 1); afficherPieces(); });
+      puce.append(x);
+      return puce;
+    })
+  );
+}
+
+$("joindre").addEventListener("click", () => $("fichier").click());
+$("fichier").addEventListener("change", async (e) => {
+  for (const f of e.target.files) {
+    if (f.size > 100 * 1024) { montrerAstuce(`« ${f.name} » est trop grand (100 Ko au maximum).`); continue; }
+    pieces.push({ nom: f.name, contenu: await f.text() });
+  }
+  e.target.value = "";
+  afficherPieces();
+});
+
+function montrerAstuce(texte) {
+  const a = $("astuce");
+  a.textContent = texte;
+  a.hidden = false;
+  clearTimeout(montrerAstuce.minuteur);
+  montrerAstuce.minuteur = setTimeout(() => { a.hidden = true; }, 9000);
+}
+
+$("dicter").addEventListener("click", () => {
+  champ.focus();
+  const windows = /Windows/i.test(navigator.userAgent);
+  montrerAstuce(windows
+    ? "Dictée Windows : appuyez sur la touche Windows + H, parlez, puis appuyez sur Entrée pour envoyer."
+    : "Dictée Mac : appuyez deux fois sur la touche Fn (ou 🌐), parlez, puis appuyez sur Entrée pour envoyer.");
+});
+
 async function envoyer(texte) {
   texte = (texte ?? champ.value).trim();
+  if (pieces.length && texte) {
+    texte += pieces.map((p) => `\n\nPièce jointe « ${p.nom} » :\n\`\`\`\n${p.contenu}\n\`\`\``).join("");
+    pieces.length = 0;
+    afficherPieces();
+  }
   if (!texte || etat.occupe || !etat.pret) return;
   champ.value = "";
   ajusterHauteur();
@@ -252,7 +327,7 @@ async function ouvrirDiscussion(id) {
     const derniere = d.messages.map((m) => m.role).lastIndexOf("chef");
     d.messages.forEach((m, i) => {
       if (m.role === "moi") messageMoi(m.texte);
-      else messageChef(m.texte, { agents: m.agents, meta: m.meta, erreur: m.meta.erreur, dernier: i === derniere });
+      else messageChef(m.texte, { agents: m.agents, meta: m.meta, erreur: m.meta.erreur, dernier: i === derniere, actions: m.actions || [] });
     });
     if (!d.messages.length) accueil();
     marquerHistorique();
@@ -754,7 +829,7 @@ $("rappel-formulaire").addEventListener("submit", async (e) => {
 // ------------------------------------------------------------ réglages › comptes
 
 function afficherEtatComptes(etatComptes) {
-  for (const [compte, texte] of [["agenda", "Agenda connecté (lecture seule)."], ["gmail", `Gmail connecté : ${etatComptes.gmail_adresse || ""} (lecture seule).`]]) {
+  for (const [compte, texte] of [["agenda", "Agenda connecté (lecture seule)."], ["gmail", `Gmail connecté : ${etatComptes.gmail_adresse || ""} (lecture seule).`], ["spotify", "Spotify connecté."]]) {
     const zone = $(`etat-${compte}`);
     zone.replaceChildren();
     if (!etatComptes[compte]) continue;
@@ -789,6 +864,58 @@ async function connecterCompte(compte, corps, champs) {
 
 $("connecter-agenda").addEventListener("click", () => connecterCompte("agenda", { lien: $("compte-agenda").value.trim() }, ["compte-agenda"]));
 $("connecter-gmail").addEventListener("click", () => connecterCompte("gmail", { adresse: $("compte-gmail").value.trim(), mot_de_passe: $("compte-gmail-mdp").value }, ["compte-gmail-mdp"]));
+
+// ------------------------------------------------------------ musique (Spotify)
+
+async function chargerMusique() {
+  let m;
+  try { m = await api("/api/spotify/en-cours"); } catch { return; }
+  const lecture = $("musique-lecture"), suivant = $("musique-suivant");
+  lecture.disabled = suivant.disabled = !m.connecte || !!m.erreur;
+  if (!m.connecte) {
+    $("musique-titre").textContent = "Rien en cours";
+    $("musique-artiste").textContent = "Spotify à connecter — Réglages › Comptes";
+  } else if (m.erreur) {
+    $("musique-titre").textContent = "Spotify";
+    $("musique-artiste").textContent = m.erreur;
+  } else if (!m.titre) {
+    $("musique-titre").textContent = "Rien en cours";
+    $("musique-artiste").textContent = "Lancez la musique dans Spotify";
+  } else {
+    $("musique-titre").textContent = m.titre;
+    $("musique-artiste").textContent = m.artistes + (m.appareil ? ` · ${m.appareil}` : "");
+  }
+  $("pochette").hidden = !m.pochette;
+  $("pochette-vide").hidden = !!m.pochette;
+  if (m.pochette) $("pochette").src = m.pochette;
+  $("icone-lecture").setAttribute("d", m.en_lecture ? "M9 5v14M15 5v14" : "M7 5l12 7-12 7z");
+  lecture.dataset.commande = m.en_lecture ? "pause" : "lecture";
+}
+
+for (const id of ["musique-lecture", "musique-suivant"]) {
+  $(id).addEventListener("click", async (e) => {
+    const commande = id === "musique-suivant" ? "suivant" : e.currentTarget.dataset.commande || "pause";
+    try { await api(`/api/spotify/${commande}`, { method: "POST" }); } catch (err) { $("musique-artiste").textContent = err.message; return; }
+    setTimeout(chargerMusique, 600);
+  });
+}
+
+$("connecter-spotify").addEventListener("click", async () => {
+  const zone = $("etat-spotify");
+  try {
+    const r = await api("/api/spotify/connecter", { method: "POST", body: JSON.stringify({ client_id: $("compte-spotify").value.trim() }) });
+    zone.textContent = r.ouvert
+      ? "Votre navigateur s'est ouvert : acceptez sur la page Spotify, puis revenez ici."
+      : `Ouvrez cette adresse dans votre navigateur : ${r.url}`;
+    const attente = setInterval(async () => {
+      const etatComptes = await api("/api/comptes");
+      if (etatComptes.spotify) { clearInterval(attente); afficherEtatComptes(etatComptes); chargerMusique(); }
+    }, 3000);
+    setTimeout(() => clearInterval(attente), 5 * 60 * 1000);
+  } catch (err) {
+    zone.textContent = err.message;
+  }
+});
 
 // ------------------------------------------------------------ 50 agents
 
@@ -968,7 +1095,9 @@ async function demarrer() {
     chargerMeteo();
     chargerF1();
     chargerAgenda();
+    chargerMusique();
     setInterval(chargerAgenda, 5 * 60 * 1000);
+    setInterval(chargerMusique, 20 * 1000);
     setInterval(chargerMeteo, 15 * 60 * 1000);
     setInterval(chargerF1, 5 * 60 * 1000);
     setInterval(chargerActions, 5 * 60 * 1000);

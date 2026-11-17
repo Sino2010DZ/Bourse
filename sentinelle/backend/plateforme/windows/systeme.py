@@ -128,3 +128,12 @@ def dossiers_jeux() -> dict:
     pf86 = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
     data = Path(os.environ.get("ProgramData", r"C:\ProgramData"))
     return {"steam": [pf86 / "Steam" / "steamapps"], "epic": [data / "Epic" / "EpicGamesLauncher" / "Data" / "Manifests"]}
+
+
+def changer_theme(mode: str) -> bool:
+    """Mode clair ou sombre de Windows (applications et système). Réversible à tout moment."""
+    valeur = "0" if mode == "sombre" else "1"
+    cle = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Themes/Personalize"
+    _powershell(f"Set-ItemProperty -Path '{cle}' -Name AppsUseLightTheme -Value {valeur}; "
+                f"Set-ItemProperty -Path '{cle}' -Name SystemUsesLightTheme -Value {valeur}")
+    return apparence().get("mode") == mode

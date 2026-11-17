@@ -26,8 +26,12 @@ L'application est reconstruite automatiquement sur un Mac de GitHub à chaque mo
 
 ## Les 50 agents
 
-**49 agents sur 50 sont en service.** Le dernier, le **DJ** (playlists Spotify), demande de créer une
-application chez Spotify : il viendra plus tard.
+**Les 50 agents sont en service.**
+
+**Actions avec « Confirmer »** : certains agents peuvent proposer d'agir — Nettoyeur (vider les fichiers temporaires
+de plus de 7 jours), Rangeur (déplacer des fichiers dans des sous-dossiers, uniquement dans les dossiers choisis,
+sans rien supprimer ni écraser), Éclairagiste (mode clair/sombre), DJ (créer une playlist Spotify privée).
+L'action apparaît sous la réponse avec **Confirmer** / **Annuler** : rien n'est fait avant votre clic, et jamais deux fois.
 
 | Section | Agents en service | Sources |
 |---|---|---|
@@ -36,7 +40,7 @@ application chez Spotify : il viendra plus tard.
 | 📈 Bourse | Trader, Journaliste, Comptable, Analyste, Radar | Yahoo Finance |
 | 🌐 Renseignement | Éclaireur, Résumeur, Vérificateur, Traducteur, Archiviste | web, archives |
 | 🏁 Sport | Stand F1, Courtside, Tribune, Coup d'envoi, Statisticien | Jolpica (F1 officiel), web |
-| 🎬 Divertissement | Découvreur, Critique, Sorties, Genève Sorties | web |
+| 🎬 Divertissement | DJ, Découvreur, Critique, Sorties, Genève Sorties | Spotify, web |
 | 🎮 Jeux vidéo | Promo, Patch, Mods, Coach, Launcher 🍎/🪟 | jeux installés (Steam, Epic), web |
 | 🧹 Entretien | Rangeur, Nettoyeur 🍎/🪟, Sauvegarde 🍎/🪟, Thermomètre 🍎/🪟, Éclairagiste 🍎/🪟 | ordinateur (lecture seule) |
 | 📅 Organisation | Agenda, Rappels, Courrier, Météo, Briefing | lien iCal, Gmail (lecture seule), Open-Meteo |
@@ -63,6 +67,14 @@ Dans **Réglages › Comptes** :
   Elle n'envoie, ne déplace et ne supprime jamais aucun mail.
 - Ces accès restent sur votre ordinateur (`comptes.json`), ne sont jamais affichés ni envoyés ailleurs, et se
   retirent avec « Déconnecter » › « Confirmer ».
+
+- **Spotify** (DJ et carte Musique) : sur developer.spotify.com › Dashboard › Create app, indiquez l'adresse de retour
+  `http://127.0.0.1:8765/api/spotify/retour`, cochez « Web API », puis copiez le **Client ID** dans Réglages › Comptes
+  et cliquez Connecter : acceptez sur la page Spotify qui s'ouvre. (Spotify peut exiger un compte Premium pour
+  les applications personnelles et pour piloter la lecture.)
+
+**Joindre un fichier** (📎) : fichiers texte, code, notes ou CSV jusqu'à 100 Ko. **Dicter** (🎤) : la dictée
+intégrée de l'ordinateur (Windows + H sous Windows, deux fois Fn sur Mac).
 
 **Rappels** : dites « Rappelle-moi demain à 9h de… » au Grand Chef, ou utilisez « + Rappel » dans la carte Agenda.
 Une notification arrive à l'heure prévue.
@@ -116,7 +128,7 @@ le dossier `ui`). L'interface ne contient aucune couleur : elle lit seulement le
 | 2 | Section Bourse (Commandant Finance + 5 agents, Yahoo Finance) | ✅ |
 | — | Nouvelle interface et 20 thèmes, historique des discussions | ✅ |
 | 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | ✅ |
-| 4 | Les autres sections : 49 agents sur 50 | ✅ |
+| 4 | Les autres sections : les 50 agents | ✅ |
 | — | Version Windows (installateur .exe) | ✅ |
 
 ## La section Bourse (Phase 2)

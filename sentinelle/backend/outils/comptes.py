@@ -69,6 +69,7 @@ class Comptes:
             "agenda": bool(d.get("agenda_ical")),
             "gmail": bool(d.get("gmail_adresse")),
             "gmail_adresse": d.get("gmail_adresse"),
+            "spotify": bool(d.get("spotify_rafraichissement")),
         }
 
     def definir_agenda(self, lien: str) -> None:
@@ -86,7 +87,11 @@ class Comptes:
     def oublier(self, compte: str) -> None:
         with self._verrou:
             d = self._lire()
-            cles = {"agenda": ["agenda_ical"], "gmail": ["gmail_adresse", "gmail_mot_de_passe"]}.get(compte, [])
+            cles = {
+                "agenda": ["agenda_ical"],
+                "gmail": ["gmail_adresse", "gmail_mot_de_passe"],
+                "spotify": ["spotify_client_id", "spotify_rafraichissement", "spotify_acces", "spotify_expire"],
+            }.get(compte, [])
             for c in cles:
                 d.pop(c, None)
             self._ecrire(d)
@@ -97,3 +102,17 @@ class Comptes:
     def gmail(self) -> tuple[str, str] | None:
         d = self._lire()
         return (d["gmail_adresse"], d["gmail_mot_de_passe"]) if d.get("gmail_adresse") else None
+
+    def definir_spotify(self, client_id: str, rafraichissement: str, acces: str, expire: float) -> None:
+        with self._verrou:
+            d = self._lire()
+            d.update(spotify_client_id=client_id, spotify_rafraichissement=rafraichissement,
+                     spotify_acces=acces, spotify_expire=expire)
+            self._ecrire(d)
+
+    def spotify(self) -> dict | None:
+        d = self._lire()
+        if not d.get("spotify_rafraichissement"):
+            return None
+        return {"client_id": d["spotify_client_id"], "rafraichissement": d["spotify_rafraichissement"],
+                "acces": d.get("spotify_acces"), "expire": d.get("spotify_expire", 0)}

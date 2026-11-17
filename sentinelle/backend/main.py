@@ -9,6 +9,7 @@ Lancement : python backend/main.py
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import os
 import sys
@@ -24,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -47,7 +49,9 @@ from outils.agenda import ServiceAgenda
 from outils.agenda import evenements as evenements_ical
 from outils.comptes import Comptes, ErreurCompte, valider_gmail, valider_lien_ical
 from outils.courrier import ServiceCourrier
+from outils.actions_ordinateur import RefusAction, nettoyer_temporaires, ranger_fichiers
 from outils.f1 import ServiceF1
+from outils.spotify import ErreurSpotify, ServiceSpotify
 from outils.galaxus import ErreurGalaxus
 from outils.meteo import ServiceMeteo
 from outils.portefeuille import ErreurPortefeuille, Portefeuille
@@ -57,14 +61,14 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
 
 
 class MessageEntrant(BaseModel):
-    message: str = Field(default="", max_length=8000)
+    message: str = Field(default="", max_length=120_000)   # pièces jointes texte comprises
     discussion_id: int | None = None
     section: str | None = Field(default=None, max_length=40)
     regenerer: bool = False   # « Régénérer » : refaire la dernière réponse
@@ -94,6 +98,10 @@ class RappelEntrant(BaseModel):
     echeance: str = Field(min_length=10, max_length=40)
 
 
+class SpotifyEntrant(BaseModel):
+    client_id: str = Field(min_length=10, max_length=64)
+
+
 class CleEntrante(BaseModel):
     cle: str = Field(min_length=1, max_length=300)
 
@@ -108,6 +116,7 @@ def creer_app(
     f1: ServiceF1 | None = None,
     telecharger_ical=None,
     lecteur_mails=None,
+    http_spotify=None,
 ) -> FastAPI:
     reglages = reglages or charger_reglages()
     cerveau = cerveau or cerveau_claude
@@ -120,6 +129,7 @@ def creer_app(
     meteo = meteo or ServiceMeteo()
     f1 = f1 or ServiceF1()
     comptes = Comptes(reglages.dossier_donnees)
+    spotify = ServiceSpotify(comptes, *([http_spotify] if http_spotify else []))
     agenda = ServiceAgenda(comptes.lien_agenda, telecharger_ical)
     courrier = ServiceCourrier(comptes.gmail, *( [lecteur_mails] if lecteur_mails else []))
     secretariat = CommandantSecretariat(
@@ -131,7 +141,7 @@ def creer_app(
         "bourse": CommandantFinance(reglages, cerveau, bourse, portefeuille),
         "renseignement": CommandantVeille(reglages, cerveau, base),
         "sport": CommandantStade(reglages, cerveau, f1),
-        "divertissement": CommandantDetente(reglages, cerveau),
+        "divertissement": CommandantDetente(reglages, cerveau, spotify),
         "jeux": CommandantGaming(reglages, cerveau),
         "entretien": CommandantMaintenance(reglages, cerveau, preferences),
         "organisation": secretariat,
@@ -228,7 +238,13 @@ def creer_app(
         res = await chef.repondre(message, historique=base.echanges(discussion_id), section=section)
         r, total = res.reponse, res.trace.total()
         agents = list(dict.fromkeys(n for n in map(nom_agent, total["intervenants"]) if n))
-        meta = {"duree_ms": r.duree_ms, "tokens": total["tokens"], "cout_usd": total["cout_usd"], "erreur": r.erreur}
+        quand = datetime.now(FUSEAU).isoformat(timespec="seconds")
+        actions = [
+            {"id": base.creer_action(a["type"], a["description"], a["donnees"], quand), "description": a["description"], "statut": "en_attente"}
+            for a in res.trace.actions
+        ]
+        meta = {"duree_ms": r.duree_ms, "tokens": total["tokens"], "cout_usd": total["cout_usd"], "erreur": r.erreur,
+                "actions": [a["id"] for a in actions]}
         message_id = base.ajouter_message(
             discussion_id, "chef", r.texte, datetime.now(FUSEAU).isoformat(timespec="seconds"), agents, meta
         )
@@ -243,6 +259,7 @@ def creer_app(
             "agents": agents,
             "discussion_id": discussion_id,
             "message_id": message_id,
+            "actions": actions,
             "consommation": consommation(),
         }
 
@@ -292,6 +309,11 @@ def creer_app(
         d = base.discussion(ident)
         if d is None:
             raise HTTPException(status_code=404, detail="Discussion introuvable.")
+        for m in d["messages"]:
+            m["actions"] = [
+                {k: a[k] for k in ("id", "description", "statut", "resultat")}
+                for a in (base.action(i) for i in m["meta"].get("actions", [])) if a
+            ]
         return d
 
     @app.get("/api/preferences")
@@ -422,7 +444,7 @@ def creer_app(
 
     @app.delete("/api/comptes/{compte}")
     def deconnecter(compte: str, confirmer: bool = False) -> dict:
-        if compte not in ("agenda", "gmail"):
+        if compte not in ("agenda", "gmail", "spotify"):
             raise HTTPException(status_code=404, detail="Compte inconnu.")
         if not confirmer:
             raise HTTPException(status_code=409, detail="Confirmation requise.")
@@ -463,6 +485,93 @@ def creer_app(
             raise HTTPException(status_code=409, detail="Confirmation requise.")
         base.supprimer_rappel(ident)
         return {"supprime": ident}
+
+    # ------------------------------------------------------------ actions à confirmer
+
+    async def executer_action(a: dict) -> str:
+        d = a["donnees"]
+        if a["type"] == "nettoyer_temporaires":
+            return await asyncio.to_thread(nettoyer_temporaires, int(d["jours"]))
+        if a["type"] == "ranger_fichiers":
+            return await asyncio.to_thread(ranger_fichiers, d["dossier"], d["deplacements"], preferences.lire()["dossiers_autorises"])
+        if a["type"] == "changer_theme":
+            if not await asyncio.to_thread(systeme().changer_theme, d["mode"]):
+                raise RefusAction("le changement de thème n'a pas fonctionné sur cet ordinateur")
+            return f"Ordinateur passé en mode {d['mode']}."
+        if a["type"] == "spotify_creer_playlist":
+            lien = await asyncio.to_thread(spotify.creer_playlist, d["nom"], d.get("description", ""), d["uris"])
+            return f"Playlist « {d['nom']} » créée avec {len(d['uris'])} titres." + (f" {lien}" if lien else "")
+        raise RefusAction("type d'action inconnu")
+
+    @app.post("/api/actions/{ident}/confirmer")
+    async def confirmer_action(ident: int) -> dict:
+        """Le bouton « Confirmer » de Monsieur : seule façon d'exécuter une action proposée par un agent."""
+        a = base.action(ident)
+        if a is None:
+            raise HTTPException(status_code=404, detail="Action introuvable.")
+        if not base.changer_statut_action(ident, "en_attente", "en_cours"):
+            raise HTTPException(status_code=409, detail="Cette action a déjà été traitée.")
+        quand = datetime.now(FUSEAU).isoformat(timespec="seconds")
+        try:
+            resultat = await executer_action(a)
+            base.changer_statut_action(ident, "en_cours", "faite", resultat, quand)
+        except (RefusAction, ErreurSpotify, OSError, KeyError, ValueError) as e:
+            base.changer_statut_action(ident, "en_cours", "echec", f"Échec : {e}", quand)
+        a = base.action(ident)
+        return {k: a[k] for k in ("id", "description", "statut", "resultat")}
+
+    @app.post("/api/actions/{ident}/annuler")
+    def annuler_action(ident: int) -> dict:
+        if base.action(ident) is None:
+            raise HTTPException(status_code=404, detail="Action introuvable.")
+        base.changer_statut_action(ident, "en_attente", "annulee", "Annulée par Monsieur.", datetime.now(FUSEAU).isoformat(timespec="seconds"))
+        a = base.action(ident)
+        return {k: a[k] for k in ("id", "description", "statut", "resultat")}
+
+    # ------------------------------------------------------------ Spotify
+
+    @app.post("/api/spotify/connecter")
+    def connecter_spotify(entree: SpotifyEntrant) -> dict:
+        try:
+            url = spotify.demarrer_connexion(entree.client_id)
+        except ErreurSpotify as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
+        ouvert = systeme().ouvrir_lien(url)
+        return {"url": url, "ouvert": ouvert}
+
+    @app.get("/api/spotify/retour", response_class=HTMLResponse)
+    def retour_spotify(code: str = "", state: str = "", error: str = "") -> str:
+        message = "Spotify est connecté à Sentinelle. Vous pouvez fermer cet onglet."
+        if error or not code:
+            message = "Connexion Spotify annulée."
+        else:
+            try:
+                spotify.terminer_connexion(code, state)
+            except ErreurSpotify as e:
+                message = str(e)
+        return (
+            "<!doctype html><html lang='fr'><meta charset='utf-8'><title>Sentinelle</title>"
+            f"<body style='font-family:system-ui;padding:40px'><h2>Sentinelle</h2><p>{html.escape(message)}</p></body></html>"
+        )
+
+    @app.get("/api/spotify/en-cours")
+    async def spotify_en_cours() -> dict:
+        if not comptes.spotify():
+            return {"connecte": False}
+        try:
+            return await asyncio.to_thread(spotify.en_cours)
+        except ErreurSpotify as e:
+            return {"connecte": True, "erreur": str(e)}
+
+    @app.post("/api/spotify/{commande}")
+    async def spotify_commande(commande: str) -> dict:
+        if commande not in ("pause", "lecture", "suivant"):
+            raise HTTPException(status_code=404, detail="Commande inconnue.")
+        try:
+            await asyncio.to_thread(spotify.commande, commande)
+        except ErreurSpotify as e:
+            raise HTTPException(status_code=409, detail=str(e)) from None
+        return await asyncio.to_thread(spotify.en_cours)
 
     @app.get("/api/meteo")
     async def meteo_geneve() -> dict:

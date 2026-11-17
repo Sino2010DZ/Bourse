@@ -149,7 +149,7 @@ def test_gmail_identifiants_refuses(adresse, mdp):
 def test_connecter_gmail(client_orga):
     assert client_orga.put("/api/comptes/gmail", json={"adresse": "moi@gmail.com", "mot_de_passe": "zzzz zzzz zzzz zzzz"}).status_code == 422
     r = client_orga.put("/api/comptes/gmail", json={"adresse": "moi@gmail.com", "mot_de_passe": "abcd abcd abcd abcd"})
-    assert r.json() == {"agenda": False, "gmail": True, "gmail_adresse": "moi@gmail.com"}
+    assert r.json() == {"agenda": False, "gmail": True, "gmail_adresse": "moi@gmail.com", "spotify": False}
 
 
 # ---------------------------------------------------------------- rappels

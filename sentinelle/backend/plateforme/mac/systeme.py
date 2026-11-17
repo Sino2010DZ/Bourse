@@ -98,3 +98,10 @@ def dossiers_jeux() -> dict:
     from pathlib import Path
 
     return {"steam": [Path.home() / "Library" / "Application Support" / "Steam" / "steamapps"], "epic": []}
+
+
+def changer_theme(mode: str) -> bool:
+    """Mode clair ou sombre de macOS. Réversible à tout moment."""
+    valeur = "true" if mode == "sombre" else "false"
+    _commande(["osascript", "-e", f'tell application "System Events" to tell appearance preferences to set dark mode to {valeur}'])
+    return apparence().get("mode") == mode
