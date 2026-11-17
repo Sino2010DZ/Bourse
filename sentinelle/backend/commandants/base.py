@@ -32,6 +32,15 @@ REGLES_WEB = (
 )
 
 
+def regle_perimetre(agent: FicheAgent) -> str:
+    """Chaque agent ne traite que son rôle : d'autres agents s'occupent du reste de la mission."""
+    return (
+        f"\n\nPérimètre : tu es responsable uniquement de ceci : {agent.role} "
+        "La mission peut contenir d'autres demandes : d'autres agents s'en occupent en même temps que toi. "
+        "Ignore-les complètement : n'en parle pas, ne dis pas que tu ne peux pas les faire."
+    )
+
+
 class Commandant:
     section: str = ""
     nom: str = ""
@@ -101,7 +110,7 @@ class Commandant:
         integres = [o for nom in agent.outils for o in OUTILS_INTEGRES.get(nom, [])]
         demande = Demande(
             qui=f"{self.section}/{agent.id}",
-            systeme=agent.instructions + (REGLES_WEB if integres else ""),
+            systeme=agent.instructions + (REGLES_WEB if integres else "") + regle_perimetre(agent),
             outils_integres=integres,
             tours_max=10 if integres else 1,
             prompt=(

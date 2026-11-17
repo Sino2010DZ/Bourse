@@ -68,7 +68,7 @@ def test_cinquante_agents(client):
     assert len(agents) == 50
     a_connecter = sorted(a["nom"] for a in agents if not a["actif"])
     # Les agents qui demandent l'accès à un compte personnel (et ceux propres à Mac/Windows, hors de ces systèmes)
-    assert {"Agenda", "Rappels", "Courrier", "DJ"} <= set(a_connecter)
+    assert "DJ" in a_connecter
 
 
 @pytest.mark.parametrize("periode", ["1J", "1S", "1M", "1A"])

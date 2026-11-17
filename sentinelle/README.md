@@ -26,9 +26,8 @@ L'application est reconstruite automatiquement sur un Mac de GitHub à chaque mo
 
 ## Les 50 agents
 
-**46 agents sur 50 sont en service.** Les 4 derniers ont besoin d'accéder à un compte personnel de Monsieur et
-seront branchés plus tard, avec son autorisation : **Agenda** (Calendrier Apple / Google), **Rappels**
-(Apple / Outlook), **Courrier** (Gmail) et **DJ** (Spotify).
+**49 agents sur 50 sont en service.** Le dernier, le **DJ** (playlists Spotify), demande de créer une
+application chez Spotify : il viendra plus tard.
 
 | Section | Agents en service | Sources |
 |---|---|---|
@@ -40,7 +39,7 @@ seront branchés plus tard, avec son autorisation : **Agenda** (Calendrier Apple
 | 🎬 Divertissement | Découvreur, Critique, Sorties, Genève Sorties | web |
 | 🎮 Jeux vidéo | Promo, Patch, Mods, Coach, Launcher 🍎/🪟 | jeux installés (Steam, Epic), web |
 | 🧹 Entretien | Rangeur, Nettoyeur 🍎/🪟, Sauvegarde 🍎/🪟, Thermomètre 🍎/🪟, Éclairagiste 🍎/🪟 | ordinateur (lecture seule) |
-| 📅 Organisation | Météo, Briefing | Open-Meteo, toutes les sections |
+| 📅 Organisation | Agenda, Rappels, Courrier, Météo, Briefing | lien iCal, Gmail (lecture seule), Open-Meteo |
 | 🚀 Création | Codeur, Designer, Idées, Débugueur, Chef de projet | — |
 
 - **Recherche web** : les agents marqués « web » cherchent et lisent des pages publiques, sans jamais se connecter
@@ -49,6 +48,24 @@ seront branchés plus tard, avec son autorisation : **Agenda** (Calendrier Apple
   choisis dans **Réglages › Dossiers**.
 - **Automatique** : briefing du matin à 7h30 (dans l'historique + notification), notification ~1 h avant les
   qualifications et la course de F1.
+
+## Connecter l'agenda et Gmail (facultatif, lecture seule)
+
+Dans **Réglages › Comptes** :
+- **Agenda** : collez le **lien iCal secret** de votre agenda.
+  - Google Agenda (sur ordinateur) : Paramètres › votre agenda › « Adresse secrète au format iCal ».
+  - Outlook.com : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier › lien ICS.
+  - iCloud : app Calendrier › clic droit sur le calendrier › Partager › Calendrier public › copier le lien.
+  Sentinelle ne peut que lire : elle ne crée, ne modifie et ne supprime aucun rendez-vous.
+- **Gmail** : votre adresse et un **mot de passe d'application** (16 lettres) créé sur
+  myaccount.google.com › Sécurité › Mots de passe des applications (la validation en deux étapes doit être active).
+  Sentinelle lit seulement l'expéditeur, l'objet et la date des mails non lus, sans les marquer comme lus.
+  Elle n'envoie, ne déplace et ne supprime jamais aucun mail.
+- Ces accès restent sur votre ordinateur (`comptes.json`), ne sont jamais affichés ni envoyés ailleurs, et se
+  retirent avec « Déconnecter » › « Confirmer ».
+
+**Rappels** : dites « Rappelle-moi demain à 9h de… » au Grand Chef, ou utilisez « + Rappel » dans la carte Agenda.
+Une notification arrive à l'heure prévue.
 
 ## Prix & Achats — Galaxus (Phase 3)
 
@@ -99,7 +116,7 @@ le dossier `ui`). L'interface ne contient aucune couleur : elle lit seulement le
 | 2 | Section Bourse (Commandant Finance + 5 agents, Yahoo Finance) | ✅ |
 | — | Nouvelle interface et 20 thèmes, historique des discussions | ✅ |
 | 3 | Prix & Achats (Galaxus, courbes de prix, alertes) | ✅ |
-| 4 | Les autres sections : 46 agents sur 50 | ✅ |
+| 4 | Les autres sections : 49 agents sur 50 | ✅ |
 | — | Version Windows (installateur .exe) | ✅ |
 
 ## La section Bourse (Phase 2)

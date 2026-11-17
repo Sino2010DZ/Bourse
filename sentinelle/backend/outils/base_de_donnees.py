@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS archives (
     sujet       TEXT NOT NULL,
     contenu     TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rappels (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    texte       TEXT NOT NULL,
+    echeance    TEXT NOT NULL,      -- heure de Zurich, ISO 8601
+    cree        TEXT NOT NULL,
+    fait        INTEGER NOT NULL DEFAULT 0,
+    notifie     INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS alertes (
     cle         TEXT PRIMARY KEY,   -- ex. « radar:AMD:2026-11-14 » : une seule alerte par jour et par action
     horodatage  TEXT NOT NULL,
@@ -240,3 +248,30 @@ class BaseDeDonnees:
         params.append(limite)
         with closing(self._connexion()) as c:
             return [dict(l) for l in c.execute(requete, params).fetchall()]
+
+    # ------------------------------------------------------------ rappels
+
+    def ajouter_rappel(self, texte: str, echeance: str, cree: str) -> int:
+        with closing(self._connexion()) as c, c:
+            return int(c.execute("INSERT INTO rappels (texte, echeance, cree) VALUES (?, ?, ?)", (texte[:300], echeance, cree)).lastrowid)
+
+    def rappels(self, inclure_faits: bool = False) -> list[dict]:
+        requete = "SELECT * FROM rappels" + ("" if inclure_faits else " WHERE fait = 0") + " ORDER BY echeance"
+        with closing(self._connexion()) as c:
+            return [dict(l) for l in c.execute(requete).fetchall()]
+
+    def rappel(self, ident: int) -> dict | None:
+        with closing(self._connexion()) as c:
+            l = c.execute("SELECT * FROM rappels WHERE id = ?", (ident,)).fetchone()
+        return dict(l) if l else None
+
+    def marquer_rappel(self, ident: int, fait: bool | None = None, notifie: bool | None = None) -> None:
+        with closing(self._connexion()) as c, c:
+            if fait is not None:
+                c.execute("UPDATE rappels SET fait = ? WHERE id = ?", (int(fait), ident))
+            if notifie is not None:
+                c.execute("UPDATE rappels SET notifie = ? WHERE id = ?", (int(notifie), ident))
+
+    def supprimer_rappel(self, ident: int) -> None:
+        with closing(self._connexion()) as c, c:
+            c.execute("DELETE FROM rappels WHERE id = ?", (ident,))

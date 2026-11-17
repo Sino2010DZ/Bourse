@@ -4,6 +4,7 @@
   ce qui couvre la bourse suisse, Londres et New York. Aucun appel à Claude : c'est gratuit.
   Si une action bouge plus que le seuil du radar, une notification Mac est envoyée (une fois par jour et par action).
 - Prix Galaxus : chaque jour à 8h, une seule lecture par produit ; notification si le prix baisse.
+- Rappels : vérifiés chaque minute, notification à l'heure prévue.
 - Briefing du matin à 7h30 (rangé dans l'historique + notification).
 - Coup d'envoi : notification ~1 h avant les qualifications, le sprint et la course de F1.
 """
@@ -90,11 +91,26 @@ async def coup_d_envoi(f1, base: BaseDeDonnees, notifier: Notifier, maintenant: 
     return envoyees
 
 
+async def verifier_rappels(base: BaseDeDonnees, notifier: Notifier, maintenant: datetime | None = None) -> list[str]:
+    """Chaque minute : notification pour les rappels arrivés à échéance (une seule fois chacun)."""
+    maintenant = maintenant or datetime.now(FUSEAU)
+    envoyes = []
+    for r in base.rappels():
+        if r["notifie"] or datetime.fromisoformat(r["echeance"]) > maintenant:
+            continue
+        notifier("Sentinelle — Rappel", r["texte"])
+        base.marquer_rappel(r["id"], notifie=True)
+        envoyes.append(r["texte"])
+    return envoyes
+
+
 def creer_planificateur(
     bourse: ServiceBourse, portefeuille: Portefeuille, base: BaseDeDonnees, notifier: Notifier, suivi=None,
     secretariat=None, journal=None, f1=None,
 ) -> AsyncIOScheduler:
     planif = AsyncIOScheduler(timezone=FUSEAU)
+    planif.add_job(verifier_rappels, CronTrigger(minute="*", timezone=FUSEAU), args=[base, notifier],
+                   id="rappels", max_instances=1, coalesce=True)
     if secretariat is not None and journal is not None:
         planif.add_job(briefing_du_matin, CronTrigger(hour=7, minute=30, timezone=FUSEAU),
                        args=[secretariat, base, journal, notifier], id="briefing", max_instances=1, coalesce=True)

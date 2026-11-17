@@ -26,13 +26,13 @@ SECTIONS_IDS = [s["id"] for s in SECTIONS]
 
 
 @pytest.mark.parametrize("systeme", ["mac", "windows"])
-def test_quarante_six_agents_par_systeme(systeme):
+def test_quarante_neuf_agents_par_systeme(systeme):
     total = {s: {a.id for a in agents_de_section(s, systeme=systeme)} for s in SECTIONS_IDS}
-    assert sum(len(v) for v in total.values()) == 46
+    assert sum(len(v) for v in total.values()) == 49
     for section, ids in total.items():
         assert ids <= {i for i, _ in AGENTS[section]}, section          # pas d'agent inconnu
     absents = {n for s in SECTIONS_IDS for i, n in AGENTS[s] if i not in total[s]}
-    assert absents == {"Agenda", "Rappels", "Courrier", "DJ"}               # comptes personnels : plus tard
+    assert absents == {"DJ"}                                                # Spotify : plus tard
 
 
 def test_chaque_agent_a_ses_outils_et_ses_regles(tmp_path):

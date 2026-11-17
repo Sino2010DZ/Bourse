@@ -407,3 +407,20 @@ h2 { margin: 0; font-family: var(--police-titre); font-size: 13px; font-weight: 
   display: block; width: 100%; margin-top: 6px; background: var(--surface); border: 1px solid var(--ligne);
   border-radius: 8px; padding: 6px 8px; color: var(--texte); font-size: 12.5px; resize: vertical;
 }
+
+/* ---------- Agenda, rappels et comptes ---------- */
+.agenda { display: flex; flex-direction: column; gap: 2px; }
+.evenement, .rappel { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: baseline; font-size: 12.5px; padding: 3px 0; }
+.evenement .heure, .rappel .heure { color: var(--accent-texte); font-variant-numeric: tabular-nums; font-size: 12px; }
+.evenement .lieu { grid-column: 2; font-size: 11px; color: var(--texte3); }
+.agenda .groupe-jour { font-size: 11px; color: var(--texte3); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 6px; }
+.rappel button { border: 1px solid var(--ligne); background: none; color: var(--texte2); border-radius: 6px; cursor: pointer; font-size: 11px; padding: 0 6px; }
+.rappel button:hover { background: var(--relief); color: var(--texte); }
+.comptes .comptes-titre { color: var(--texte); font-weight: 600; }
+.ligne-compte { display: flex; gap: 6px; margin-top: 6px; }
+.ligne-compte input {
+  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--ligne); border-radius: 8px;
+  padding: 5px 8px; color: var(--texte); font-size: 12.5px;
+}
+.etat-compte { font-size: 12px; color: var(--accent-texte); }
+.etat-compte button { margin-left: 8px; }

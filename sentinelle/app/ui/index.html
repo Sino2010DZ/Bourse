@@ -137,8 +137,17 @@
       </div>
 
       <section class="bloc">
-        <div class="bloc-entete"><h2>Agenda du jour</h2></div>
-        <div class="vide">Agenda à connecter (Calendrier Apple / Google) — avec votre autorisation.</div>
+        <div class="bloc-entete"><h2>Agenda du jour</h2><button class="lien" id="ajouter-rappel" type="button">+ Rappel</button></div>
+        <form id="rappel-formulaire" class="produit-formulaire" hidden>
+          <input id="rappel-texte" type="text" maxlength="300" placeholder="De quoi faut-il vous rappeler ?" required>
+          <input id="rappel-quand" type="datetime-local" required>
+          <div class="formulaire-boutons">
+            <button type="button" class="lien" id="annuler-rappel">Annuler</button>
+            <button type="submit" class="bouton-accent">Ajouter</button>
+          </div>
+          <div class="formulaire-erreur" id="rappel-erreur"></div>
+        </form>
+        <div id="agenda" class="agenda"><div class="vide">Chargement…</div></div>
       </section>
 
       <section class="bloc">
@@ -177,7 +186,7 @@
       <fieldset class="auto">
         <label class="interrupteur">
           <input type="checkbox" id="auto">
-          <span>Automatique : suit le réglage clair/sombre du Mac</span>
+          <span>Automatique : suit le réglage clair/sombre de l’ordinateur</span>
         </label>
         <div class="auto-choix">
           <label>Le jour <select id="theme-clair"></select></label>
@@ -190,6 +199,25 @@
           <textarea id="dossiers" rows="3" placeholder="Exemple : C:\Users\Moi\Downloads"></textarea>
         </label>
         <span class="formulaire-erreur" id="dossiers-erreur"></span>
+      </fieldset>
+
+      <fieldset class="auto comptes">
+        <div class="comptes-titre">Comptes (lecture seule : Sentinelle ne modifie, n'envoie et ne supprime rien)</div>
+        <label>Agenda — lien iCal secret (Google Agenda, Outlook ou iCloud)
+          <span class="ligne-compte">
+            <input id="compte-agenda" type="url" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+            <button type="button" class="bouton-accent" id="connecter-agenda">Connecter</button>
+          </span>
+        </label>
+        <span class="etat-compte" id="etat-agenda"></span>
+        <label>Gmail — adresse et mot de passe d'application (16 lettres)
+          <span class="ligne-compte">
+            <input id="compte-gmail" type="email" placeholder="vous@gmail.com">
+            <input id="compte-gmail-mdp" type="password" placeholder="abcd efgh ijkl mnop" autocomplete="off">
+            <button type="button" class="bouton-accent" id="connecter-gmail">Connecter</button>
+          </span>
+        </label>
+        <span class="etat-compte" id="etat-gmail"></span>
       </fieldset>
 
       <fieldset class="auto">

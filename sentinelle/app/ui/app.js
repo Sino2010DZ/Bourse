@@ -679,6 +679,117 @@ async function chargerF1() {
   afficherBandeau(etat.positions);
 }
 
+// ------------------------------------------------------------ agenda et rappels
+
+const heureCourte = (iso) => new Date(iso).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" });
+const memeJour = (a, b) => a.toDateString() === b.toDateString();
+
+async function chargerAgenda() {
+  const zone = $("agenda");
+  let a;
+  try { a = await api("/api/agenda"); } catch { zone.replaceChildren(el("div", "vide", "Agenda indisponible.")); return; }
+  const lignes = [];
+  const aujourdhui = new Date(), demain = new Date(Date.now() + 86400000);
+  if (!a.connecte) {
+    lignes.push(el("div", "vide", "Agenda non connecté — Réglages › Comptes (lien iCal secret, lecture seule)."));
+  } else if (a.erreur) {
+    lignes.push(el("div", "vide", a.erreur));
+  } else {
+    for (const [titre, jour] of [["Aujourd'hui", aujourdhui], ["Demain", demain]]) {
+      const evs = a.evenements.filter((e) => memeJour(new Date(e.debut), jour));
+      lignes.push(el("div", "groupe-jour", titre));
+      if (!evs.length) lignes.push(el("div", "vide", "Rien de prévu."));
+      evs.forEach((e) => {
+        const l = el("div", "evenement");
+        l.append(el("span", "heure", e.toute_la_journee ? "journée" : heureCourte(e.debut)), el("span", "", e.titre), el("span"));
+        if (e.lieu) l.append(el("span", "lieu", e.lieu));
+        lignes.push(l);
+      });
+    }
+  }
+  if (a.rappels.length) {
+    lignes.push(el("div", "groupe-jour", "Rappels"));
+    a.rappels.slice(0, 6).forEach((r) => {
+      const l = el("div", "rappel");
+      const d = new Date(r.echeance);
+      l.append(el("span", "heure", memeJour(d, aujourdhui) ? heureCourte(r.echeance) : d.toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit" })));
+      l.append(el("span", "", r.texte));
+      const fait = el("button", "", "✓");
+      fait.type = "button";
+      fait.title = "Marquer comme fait";
+      fait.addEventListener("click", async () => { await api(`/api/rappels/${r.id}/fait`, { method: "POST" }); chargerAgenda(); });
+      l.append(fait);
+      lignes.push(l);
+    });
+  }
+  zone.replaceChildren(...lignes);
+}
+
+function basculerRappel(ouvert) {
+  $("rappel-formulaire").hidden = !ouvert;
+  $("rappel-erreur").textContent = "";
+  if (ouvert) {
+    const dans1h = new Date(Date.now() + 3600000);
+    dans1h.setMinutes(0, 0, 0);
+    const local = new Date(dans1h.getTime() - dans1h.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    $("rappel-quand").value = local;
+    $("rappel-texte").value = "";
+    $("rappel-texte").focus();
+  }
+}
+$("ajouter-rappel").addEventListener("click", () => basculerRappel($("rappel-formulaire").hidden));
+$("annuler-rappel").addEventListener("click", () => basculerRappel(false));
+$("rappel-formulaire").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const quand = new Date($("rappel-quand").value);
+    await api("/api/rappels", { method: "POST", body: JSON.stringify({ texte: $("rappel-texte").value, echeance: quand.toISOString() }) });
+    basculerRappel(false);
+    chargerAgenda();
+  } catch (err) {
+    $("rappel-erreur").textContent = err.message;
+  }
+});
+
+// ------------------------------------------------------------ réglages › comptes
+
+function afficherEtatComptes(etatComptes) {
+  for (const [compte, texte] of [["agenda", "Agenda connecté (lecture seule)."], ["gmail", `Gmail connecté : ${etatComptes.gmail_adresse || ""} (lecture seule).`]]) {
+    const zone = $(`etat-${compte}`);
+    zone.replaceChildren();
+    if (!etatComptes[compte]) continue;
+    zone.append(document.createTextNode(texte));
+    const b = el("button", "lien", "Déconnecter");
+    b.type = "button";
+    b.addEventListener("click", () => {
+      zone.replaceChildren(document.createTextNode("Déconnecter ce compte ? "));
+      const ok = el("button", "bouton-accent", "Confirmer");
+      ok.type = "button";
+      ok.addEventListener("click", async () => {
+        afficherEtatComptes(await api(`/api/comptes/${compte}?confirmer=true`, { method: "DELETE" }));
+        chargerAgenda();
+      });
+      zone.append(ok);
+    });
+    zone.append(b);
+  }
+}
+
+async function connecterCompte(compte, corps, champs) {
+  const zone = $(`etat-${compte}`);
+  zone.textContent = "Vérification…";
+  try {
+    afficherEtatComptes(await api(`/api/comptes/${compte}`, { method: "PUT", body: JSON.stringify(corps) }));
+    champs.forEach((c) => { $(c).value = ""; });
+    chargerAgenda();
+  } catch (err) {
+    zone.textContent = err.message;
+  }
+}
+
+$("connecter-agenda").addEventListener("click", () => connecterCompte("agenda", { lien: $("compte-agenda").value.trim() }, ["compte-agenda"]));
+$("connecter-gmail").addEventListener("click", () => connecterCompte("gmail", { adresse: $("compte-gmail").value.trim(), mot_de_passe: $("compte-gmail-mdp").value }, ["compte-gmail-mdp"]));
+
 // ------------------------------------------------------------ 50 agents
 
 async function chargerAgents() {
@@ -745,7 +856,11 @@ function majReglages() {
   $("dossiers-erreur").textContent = "";
 }
 
-$("ouvrir-reglages").addEventListener("click", () => { majReglages(); $("reglages").showModal(); });
+$("ouvrir-reglages").addEventListener("click", async () => {
+  majReglages();
+  $("reglages").showModal();
+  try { afficherEtatComptes(await api("/api/comptes")); } catch { /* hors ligne */ }
+});
 $("auto").addEventListener("change", async (e) => {
   await Themes.enregistrer({ auto: e.target.checked });
   Themes.choisirSelonPreferences(true);
@@ -852,6 +967,8 @@ async function demarrer() {
     chargerProduits();
     chargerMeteo();
     chargerF1();
+    chargerAgenda();
+    setInterval(chargerAgenda, 5 * 60 * 1000);
     setInterval(chargerMeteo, 15 * 60 * 1000);
     setInterval(chargerF1, 5 * 60 * 1000);
     setInterval(chargerActions, 5 * 60 * 1000);

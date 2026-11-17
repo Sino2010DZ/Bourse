@@ -18,6 +18,9 @@ RACINE="$(pwd -W 2>/dev/null || pwd)"   # sous Windows (Git Bash) : chemin au fo
   --collect-all curl_cffi \
   --collect-submodules uvicorn \
   --collect-submodules apscheduler \
+  --collect-all icalendar \
+  --collect-all recurring_ical_events \
+  --collect-all x_wr_timezone \
   --hidden-import plateforme.mac.systeme \
   --hidden-import plateforme.windows.systeme
 

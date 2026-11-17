@@ -43,6 +43,10 @@ from grand_chef import GrandChef
 from journal import FUSEAU, Journal
 from outils.base_de_donnees import BaseDeDonnees
 from outils.bourse import ServiceBourse, Source
+from outils.agenda import ServiceAgenda
+from outils.agenda import evenements as evenements_ical
+from outils.comptes import Comptes, ErreurCompte, valider_gmail, valider_lien_ical
+from outils.courrier import ServiceCourrier
 from outils.f1 import ServiceF1
 from outils.galaxus import ErreurGalaxus
 from outils.meteo import ServiceMeteo
@@ -53,7 +57,7 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
@@ -76,6 +80,20 @@ class PrixEntrant(BaseModel):
     prix: float = Field(gt=0, lt=1_000_000)
 
 
+class AgendaEntrant(BaseModel):
+    lien: str = Field(min_length=10, max_length=1000)
+
+
+class GmailEntrant(BaseModel):
+    adresse: str = Field(min_length=5, max_length=200)
+    mot_de_passe: str = Field(min_length=16, max_length=40)
+
+
+class RappelEntrant(BaseModel):
+    texte: str = Field(min_length=1, max_length=300)
+    echeance: str = Field(min_length=10, max_length=40)
+
+
 class CleEntrante(BaseModel):
     cle: str = Field(min_length=1, max_length=300)
 
@@ -88,6 +106,8 @@ def creer_app(
     lecteur_galaxus: Lecteur | None = None,
     meteo: ServiceMeteo | None = None,
     f1: ServiceF1 | None = None,
+    telecharger_ical=None,
+    lecteur_mails=None,
 ) -> FastAPI:
     reglages = reglages or charger_reglages()
     cerveau = cerveau or cerveau_claude
@@ -99,7 +119,12 @@ def creer_app(
     suivi = SuiviPrix(base, lecteur_galaxus)
     meteo = meteo or ServiceMeteo()
     f1 = f1 or ServiceF1()
-    secretariat = CommandantSecretariat(reglages, cerveau, meteo, bourse, portefeuille, suivi, f1)
+    comptes = Comptes(reglages.dossier_donnees)
+    agenda = ServiceAgenda(comptes.lien_agenda, telecharger_ical)
+    courrier = ServiceCourrier(comptes.gmail, *( [lecteur_mails] if lecteur_mails else []))
+    secretariat = CommandantSecretariat(
+        reglages, cerveau, meteo, bourse, portefeuille, suivi, f1, agenda=agenda, courrier=courrier, base=base
+    )
     commandants = {
         "materiel": CommandantTech(reglages, cerveau),
         "achats": CommandantAchats(reglages, cerveau, suivi, base),
@@ -363,6 +388,81 @@ def creer_app(
         """Ouvre la page Galaxus du produit dans le navigateur (aucun achat n'est fait)."""
         f = _fiche_ou_404(ident)
         return {"ouvert": systeme().ouvrir_lien(f["url"])}
+
+    # ------------------------------------------------------------ comptes (lecture seule) et rappels
+
+    @app.get("/api/comptes")
+    def etat_comptes() -> dict:
+        return comptes.etat()          # jamais les secrets eux-mêmes
+
+    @app.put("/api/comptes/agenda")
+    async def connecter_agenda(entree: AgendaEntrant) -> dict:
+        try:
+            lien = valider_lien_ical(entree.lien)
+            contenu = await asyncio.to_thread(agenda.telecharger, lien)
+            await asyncio.to_thread(evenements_ical, contenu, datetime.now(FUSEAU), datetime.now(FUSEAU))
+        except ErreurCompte as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
+        except Exception:
+            raise HTTPException(status_code=422, detail="Ce lien ne donne pas un agenda lisible. Vérifiez qu'il s'agit bien du lien iCal secret.") from None
+        comptes.definir_agenda(lien)
+        return comptes.etat()
+
+    @app.put("/api/comptes/gmail")
+    async def connecter_gmail(entree: GmailEntrant) -> dict:
+        try:
+            adresse, mot_de_passe = valider_gmail(entree.adresse, entree.mot_de_passe)
+            await asyncio.to_thread(courrier.lecteur, adresse, mot_de_passe, 1)   # essai de connexion (lecture seule)
+        except ErreurCompte as e:
+            raise HTTPException(status_code=422, detail=str(e)) from None
+        except Exception:
+            raise HTTPException(status_code=422, detail="Gmail refuse la connexion : vérifiez l'adresse et le mot de passe d'application.") from None
+        comptes.definir_gmail(adresse, mot_de_passe)
+        return comptes.etat()
+
+    @app.delete("/api/comptes/{compte}")
+    def deconnecter(compte: str, confirmer: bool = False) -> dict:
+        if compte not in ("agenda", "gmail"):
+            raise HTTPException(status_code=404, detail="Compte inconnu.")
+        if not confirmer:
+            raise HTTPException(status_code=409, detail="Confirmation requise.")
+        comptes.oublier(compte)
+        return comptes.etat()
+
+    @app.get("/api/agenda")
+    async def agenda_du_jour() -> dict:
+        try:
+            donnees = await agenda.prochains(2)
+        except Exception:
+            donnees = {"connecte": True, "erreur": "Agenda injoignable pour le moment."}
+        return {**donnees, "rappels": base.rappels()}
+
+    @app.post("/api/rappels", status_code=201)
+    def ajouter_rappel(entree: RappelEntrant) -> dict:
+        try:
+            echeance = datetime.fromisoformat(entree.echeance)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Date invalide.") from None
+        echeance = echeance if echeance.tzinfo else echeance.replace(tzinfo=FUSEAU)
+        ident = base.ajouter_rappel(entree.texte.strip(), echeance.isoformat(timespec="minutes"),
+                                    datetime.now(FUSEAU).isoformat(timespec="seconds"))
+        return base.rappel(ident)
+
+    @app.post("/api/rappels/{ident}/fait")
+    def rappel_fait(ident: int) -> dict:
+        if not base.rappel(ident):
+            raise HTTPException(status_code=404, detail="Rappel introuvable.")
+        base.marquer_rappel(ident, fait=True)
+        return base.rappel(ident)
+
+    @app.delete("/api/rappels/{ident}")
+    def supprimer_rappel(ident: int, confirmer: bool = False) -> dict:
+        if not base.rappel(ident):
+            raise HTTPException(status_code=404, detail="Rappel introuvable.")
+        if not confirmer:
+            raise HTTPException(status_code=409, detail="Confirmation requise.")
+        base.supprimer_rappel(ident)
+        return {"supprime": ident}
 
     @app.get("/api/meteo")
     async def meteo_geneve() -> dict:
