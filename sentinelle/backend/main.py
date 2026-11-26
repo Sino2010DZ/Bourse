@@ -22,10 +22,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -52,7 +52,7 @@ from outils.courrier import ServiceCourrier
 from commandants.creation import BUDGET_CHANTIER_USD
 from outils.actions_ordinateur import RefusAction, nettoyer_temporaires, ranger_fichiers
 from outils.ordinateur import dans_dossiers_autorises
-from outils.claude_code import executer_chantier, restaurer
+from outils.claude_code import executer_chantier, lire_chantier, restaurer
 from outils.f1 import ServiceF1
 from outils.spotify import ErreurSpotify, ServiceSpotify
 from outils.galaxus import ErreurGalaxus
@@ -64,7 +64,7 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
@@ -167,12 +167,33 @@ def creer_app(
         if planif:
             planif.shutdown(wait=False)
 
+    # Actions restées « en cours » quand Sentinelle a été fermée : elles sont marquées interrompues,
+    # et un chantier Claude Code garde la liste de ses fichiers pour pouvoir être annulé.
+    for a in base.actions_en_cours():
+        if a["type"] == "claude_code_modifier":
+            sauvegarde = reglages.dossier_donnees / "sauvegardes" / f"action-{a['id']}"
+            base.completer_action(a["id"], {**lire_chantier(sauvegarde), "sauvegarde": str(sauvegarde)})
+        base.changer_statut_action(a["id"], "en_cours", "echec", "Interrompue : Sentinelle a été fermée pendant l'action.",
+                                   datetime.now(FUSEAU).isoformat(timespec="seconds"))
+
     app = FastAPI(title="Sentinelle", version=VERSION, lifespan=cycle_de_vie)
+
+    origines_autorisees = set(ORIGINES_TAURI + [f"http://127.0.0.1:{reglages.port}", f"http://localhost:{reglages.port}"])
+
+    @app.middleware("http")
+    async def refuser_les_autres_sites(requete: Request, suite):
+        """Protection « CSRF » : une page web ouverte dans un navigateur ne peut rien déclencher ici.
+        Les navigateurs envoient toujours l'en-tête Origin pour ces requêtes ; la fenêtre de Sentinelle est autorisée."""
+        if requete.method in ("POST", "PUT", "DELETE", "PATCH"):
+            origine = requete.headers.get("origin")
+            if origine is not None and origine not in origines_autorisees:
+                return JSONResponse({"detail": "Requête refusée : elle ne vient pas de Sentinelle."}, status_code=403)
+        return await suite(requete)
     # Refuse les requêtes qui ne visent pas explicitement cet ordinateur (protection « DNS rebinding »).
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=ORIGINES_TAURI + [f"http://127.0.0.1:{reglages.port}", f"http://localhost:{reglages.port}"],
+        allow_origins=sorted(origines_autorisees),
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],  # « X-Sentinelle » n'est volontairement pas autorisé aux pages web
     )
@@ -505,6 +526,7 @@ def creer_app(
             if not dans_dossiers_autorises(Path(d["projet"]).expanduser(), preferences.lire()["dossiers_projets"]):
                 raise RefusAction("ce projet n'est plus dans Réglages › Projets")
             sauvegarde = reglages.dossier_donnees / "sauvegardes" / f"action-{a['id']}"
+            base.completer_action(a["id"], {"sauvegarde": str(sauvegarde)})
             r = await executer_chantier(d["projet"], d["consigne"], sauvegarde, reglages.modele_grand_chef,
                                         BUDGET_CHANTIER_USD, requete_claude_code)
             base.completer_action(a["id"], {"modifies": r["modifies"], "crees": r["crees"], "sauvegarde": str(sauvegarde)})
@@ -523,7 +545,7 @@ def creer_app(
     def vue_action(ident: int) -> dict:
         a = base.action(ident)
         vue = {k: a[k] for k in ("id", "type", "description", "statut", "resultat")}
-        vue["annulable"] = a["statut"] == "faite" and bool(a["donnees"].get("modifies") or a["donnees"].get("crees"))
+        vue["annulable"] = a["statut"] in ("faite", "echec") and bool(a["donnees"].get("modifies") or a["donnees"].get("crees"))
         return vue
 
     @app.post("/api/actions/{ident}/confirmer")
@@ -542,7 +564,8 @@ def creer_app(
                 base.changer_statut_action(ident, "en_cours", "faite", resultat, datetime.now(FUSEAU).isoformat(timespec="seconds"))
             except Exception as e:  # toute erreur termine l'action proprement
                 logging.exception("Action %s en échec", ident)
-                base.changer_statut_action(ident, "en_cours", "echec", f"Échec : {e}", datetime.now(FUSEAU).isoformat(timespec="seconds"))
+                texte = str(e) or type(e).__name__
+                base.changer_statut_action(ident, "en_cours", "echec", texte[:1].upper() + texte[1:], datetime.now(FUSEAU).isoformat(timespec="seconds"))
 
         tache = asyncio.create_task(executer())
         actions_en_cours[ident] = tache
@@ -566,12 +589,12 @@ def creer_app(
         if a is None:
             raise HTTPException(status_code=404, detail="Action introuvable.")
         d = a["donnees"]
-        if a["statut"] != "faite" or not (d.get("modifies") or d.get("crees")):
+        if a["statut"] not in ("faite", "echec") or not (d.get("modifies") or d.get("crees")):
             raise HTTPException(status_code=409, detail="Rien à annuler pour cette action.")
         if not confirmer:
             raise HTTPException(status_code=409, detail="Confirmation requise.")
         texte = await asyncio.to_thread(restaurer, d["projet"], Path(d["sauvegarde"]), d.get("modifies", []), d.get("crees", []))
-        base.changer_statut_action(ident, "faite", "annulee", f"Modifications annulées : {texte}", datetime.now(FUSEAU).isoformat(timespec="seconds"))
+        base.changer_statut_action(ident, a["statut"], "annulee", f"Modifications annulées : {texte}", datetime.now(FUSEAU).isoformat(timespec="seconds"))
         return vue_action(ident)
 
     @app.post("/api/actions/{ident}/annuler")

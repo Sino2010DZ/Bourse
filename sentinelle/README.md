@@ -73,6 +73,14 @@ Dans **Réglages › Comptes** :
   et cliquez Connecter : acceptez sur la page Spotify qui s'ouvre. (Spotify peut exiger un compte Premium pour
   les applications personnelles et pour piloter la lecture.)
 
+**Codeur + Claude Code** : ajoutez le dossier d'un projet dans **Réglages › Projets**, puis demandez par exemple
+« Dans mon projet MonSite, mets le titre en bleu ». Après **Confirmer**, Claude Code modifie le projet — sans
+terminal ni Internet, rien en dehors du dossier, budget 1 $ maximum — et chaque fichier modifié est d'abord
+sauvegardé : le bouton **Annuler les modifications** remet tout comme avant (même si le chantier s'est interrompu).
+
+**Sécurité** : une page web ouverte dans votre navigateur ne peut rien déclencher dans Sentinelle (protection CSRF) ;
+seule la fenêtre de Sentinelle peut confirmer une action.
+
 **Joindre un fichier** (📎) : fichiers texte, code, notes ou CSV jusqu'à 100 Ko. **Dicter** (🎤) : la dictée
 intégrée de l'ordinateur (Windows + H sous Windows, deux fois Fn sur Mac).
 

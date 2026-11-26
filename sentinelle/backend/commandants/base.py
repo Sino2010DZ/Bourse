@@ -180,8 +180,16 @@ class Commandant:
         trace.noter(demande.qui, mission, r)
         if r.erreur:
             return agent, "(rapport indisponible)"
-        if agent.actions and isinstance(r.donnees, dict):
-            return agent, await self._traiter_actions(r.donnees, trace)
+        if agent.actions:
+            donnees_rep = r.donnees
+            if not isinstance(donnees_rep, dict):   # réponse non structurée : on tente de la relire
+                try:
+                    donnees_rep = json.loads(r.texte)
+                except ValueError:
+                    donnees_rep = None
+            if isinstance(donnees_rep, dict):
+                return agent, await self._traiter_actions(donnees_rep, trace)
+            return agent, r.texte + "\n(Aucune action n'a pu être préparée : réponse incomplète de l'agent.)"
         return agent, r.texte
 
     async def resumer(self, mission: str, rapports: list[tuple[FicheAgent, str]], trace: Trace) -> str:

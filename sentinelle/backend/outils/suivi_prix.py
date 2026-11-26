@@ -105,7 +105,7 @@ class SuiviPrix:
         f = self.fiche(ident)
         if not f or f["variation"] is None or f["variation"] >= 0:
             return None
-        cle = f"prix:{ident}:{f['prix']:.2f}"
+        cle = f"prix:{ident}:{f['dernier_releve'][:10]}:{f['prix']:.2f}"   # un nouveau jour = une nouvelle alerte
         if self.base.alerte_deja_envoyee(cle):
             return None
         baisse_pct = (1 - f["prix"] / f["prix_precedent"]) * 100

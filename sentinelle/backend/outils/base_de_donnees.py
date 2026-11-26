@@ -316,3 +316,8 @@ class BaseDeDonnees:
             return
         with closing(self._connexion()) as c, c:
             c.execute("UPDATE actions SET donnees = ? WHERE id = ?", (json.dumps({**a["donnees"], **ajouts}, ensure_ascii=False), ident))
+
+    def actions_en_cours(self) -> list[dict]:
+        with closing(self._connexion()) as c:
+            ids = [l["id"] for l in c.execute("SELECT id FROM actions WHERE statut = 'en_cours'").fetchall()]
+        return [self.action(i) for i in ids]

@@ -312,7 +312,8 @@ $("dicter").addEventListener("click", () => {
 
 async function envoyer(texte) {
   texte = (texte ?? champ.value).trim();
-  if (pieces.length && texte) {
+  if (!texte || etat.occupe || !etat.pret) return;   // avant d'utiliser les pièces jointes (sinon elles seraient perdues)
+  if (pieces.length) {
     texte += pieces.map((p) => `\n\nPièce jointe « ${p.nom} » :\n\`\`\`\n${p.contenu}\n\`\`\``).join("");
     pieces.length = 0;
     afficherPieces();
