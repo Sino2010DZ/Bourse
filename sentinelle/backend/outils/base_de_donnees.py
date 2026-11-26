@@ -308,3 +308,11 @@ class BaseDeDonnees:
                 (vers, resultat[:2000], quand, ident, de),
             )
             return cur.rowcount == 1
+
+    def completer_action(self, ident: int, ajouts: dict) -> None:
+        """Ajoute des informations aux données d'une action (ex. fichiers sauvegardés par un chantier)."""
+        a = self.action(ident)
+        if a is None:
+            return
+        with closing(self._connexion()) as c, c:
+            c.execute("UPDATE actions SET donnees = ? WHERE id = ?", (json.dumps({**a["donnees"], **ajouts}, ensure_ascii=False), ident))

@@ -112,8 +112,8 @@ class ServiceF1:
     async def _lire(self, chemin: str) -> dict:
         return await asyncio.to_thread(self.lecteur, f"{BASE}/{chemin}")
 
-    async def prochaine(self) -> dict | None:
-        return prochaine_course(await self._lire("current.json"))
+    async def prochaine(self, maintenant: datetime | None = None) -> dict | None:
+        return prochaine_course(await self._lire("current.json"), maintenant)
 
     async def dernier_resultat(self) -> dict | None:
         return resultats(await self._lire("current/last/results.json"))

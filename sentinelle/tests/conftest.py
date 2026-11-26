@@ -1,7 +1,7 @@
 """Outils communs aux tests : faux cerveau (pas d'appel payant) et fausse bourse (pas d'Internet)."""
 
 import sys
-from datetime import date, timedelta
+from datetime import date, date as _date, timedelta
 from pathlib import Path
 
 import pytest
@@ -114,14 +114,18 @@ def calendrier_f1(dates_courses=("2026-11-22", "2026-12-06")):
         courses.append({
             "round": str(i), "raceName": f"Grand Prix {i}", "date": date, "time": "13:00:00Z",
             "Circuit": {"circuitName": f"Circuit {i}", "Location": {"locality": "Ville", "country": "Pays"}},
-            "Qualifying": {"date": date[:-2] + f"{int(date[-2:]) - 1:02d}", "time": "14:00:00Z"},
+            "Qualifying": {"date": (_date.fromisoformat(date) - timedelta(days=1)).isoformat(), "time": "14:00:00Z"},
         })
     return {"MRData": {"RaceTable": {"Races": courses}}}
 
 
-def lecteur_f1(url):
+def lecteur_f1(url, dates=None):
+    """Faux Jolpica. Par défaut, les courses tombent dans 5 et 19 jours (le test ne vieillit pas)."""
     if url.endswith("current.json"):
-        return calendrier_f1()
+        if dates is None:
+            aujourd_hui = date.today()
+            dates = ((aujourd_hui + timedelta(days=5)).isoformat(), (aujourd_hui + timedelta(days=19)).isoformat())
+        return calendrier_f1(dates)
     if "results" in url:
         return {"MRData": {"RaceTable": {"Races": [{"raceName": "Brazilian Grand Prix", "date": "2026-11-08", "Results": [
             {"position": "1", "Driver": {"givenName": "Lando", "familyName": "Norris"}, "Constructor": {"name": "McLaren"},

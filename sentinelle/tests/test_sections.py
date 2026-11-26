@@ -112,7 +112,7 @@ def test_coup_d_envoi_une_seule_fois(tmp_path):
     from planificateur import coup_d_envoi
 
     base, envoyees = BaseDeDonnees(tmp_path), []
-    f1 = ServiceF1(lecteur_f1)
+    f1 = ServiceF1(lambda url: lecteur_f1(url, dates=("2026-11-22", "2026-12-06")))
     avant_qualif = datetime(2026, 11, 21, 14, 10, tzinfo=FUSEAU)        # qualifs à 15:00 (Zurich)
     for _ in range(2):
         asyncio.run(coup_d_envoi(f1, base, lambda t, m: envoyees.append(m), maintenant=avant_qualif))

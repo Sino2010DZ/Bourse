@@ -14,6 +14,7 @@ DEFAUTS = {
     "theme_sombre": "nuit-or",
     "budget_jour_usd": 1.0,    # jauge « Quota du jour »
     "dossiers_autorises": [],  # seuls dossiers que les agents Fichiers ont le droit de lire
+    "dossiers_projets": [],    # projets de code que le Codeur peut modifier (après « Confirmer »)
 }
 _ID_THEME = re.compile(r"^[a-z0-9-]{1,40}$")
 
@@ -35,7 +36,12 @@ def valider(donnees: dict) -> dict:
     except (TypeError, ValueError):
         raise ErreurPreferences("Le budget doit être un nombre.") from None
     propre["budget_jour_usd"] = round(min(max(budget, 0.05), 100.0), 2)
-    dossiers = donnees.get("dossiers_autorises", [])
+    propre["dossiers_autorises"] = _dossiers(donnees.get("dossiers_autorises", []))
+    propre["dossiers_projets"] = _dossiers(donnees.get("dossiers_projets", []))
+    return propre
+
+
+def _dossiers(dossiers) -> list[str]:
     if not isinstance(dossiers, list):
         raise ErreurPreferences("La liste des dossiers est invalide.")
     propres = []
@@ -53,8 +59,7 @@ def valider(donnees: dict) -> dict:
         except OSError:
             raise ErreurPreferences("Chemin de dossier invalide.") from None
         propres.append(d)
-    propre["dossiers_autorises"] = propres[:10]
-    return propre
+    return propres[:10]
 
 
 class Preferences:

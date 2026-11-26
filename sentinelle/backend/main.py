@@ -49,7 +49,10 @@ from outils.agenda import ServiceAgenda
 from outils.agenda import evenements as evenements_ical
 from outils.comptes import Comptes, ErreurCompte, valider_gmail, valider_lien_ical
 from outils.courrier import ServiceCourrier
+from commandants.creation import BUDGET_CHANTIER_USD
 from outils.actions_ordinateur import RefusAction, nettoyer_temporaires, ranger_fichiers
+from outils.ordinateur import dans_dossiers_autorises
+from outils.claude_code import executer_chantier, restaurer
 from outils.f1 import ServiceF1
 from outils.spotify import ErreurSpotify, ServiceSpotify
 from outils.galaxus import ErreurGalaxus
@@ -117,6 +120,7 @@ def creer_app(
     telecharger_ical=None,
     lecteur_mails=None,
     http_spotify=None,
+    requete_claude_code=None,
 ) -> FastAPI:
     reglages = reglages or charger_reglages()
     cerveau = cerveau or cerveau_claude
@@ -145,7 +149,7 @@ def creer_app(
         "jeux": CommandantGaming(reglages, cerveau),
         "entretien": CommandantMaintenance(reglages, cerveau, preferences),
         "organisation": secretariat,
-        "creation": CommandantAtelier(reglages, cerveau),
+        "creation": CommandantAtelier(reglages, cerveau, preferences),
     }
     chef = GrandChef(reglages, journal, cerveau, commandants)
 
@@ -310,10 +314,7 @@ def creer_app(
         if d is None:
             raise HTTPException(status_code=404, detail="Discussion introuvable.")
         for m in d["messages"]:
-            m["actions"] = [
-                {k: a[k] for k in ("id", "description", "statut", "resultat")}
-                for a in (base.action(i) for i in m["meta"].get("actions", [])) if a
-            ]
+            m["actions"] = [vue_action(i) for i in m["meta"].get("actions", []) if base.action(i)]
         return d
 
     @app.get("/api/preferences")
@@ -488,6 +489,8 @@ def creer_app(
 
     # ------------------------------------------------------------ actions à confirmer
 
+    actions_en_cours: dict[int, asyncio.Task] = {}
+
     async def executer_action(a: dict) -> str:
         d = a["donnees"]
         if a["type"] == "nettoyer_temporaires":
@@ -498,35 +501,85 @@ def creer_app(
             if not await asyncio.to_thread(systeme().changer_theme, d["mode"]):
                 raise RefusAction("le changement de thème n'a pas fonctionné sur cet ordinateur")
             return f"Ordinateur passé en mode {d['mode']}."
+        if a["type"] == "claude_code_modifier":
+            if not dans_dossiers_autorises(Path(d["projet"]).expanduser(), preferences.lire()["dossiers_projets"]):
+                raise RefusAction("ce projet n'est plus dans Réglages › Projets")
+            sauvegarde = reglages.dossier_donnees / "sauvegardes" / f"action-{a['id']}"
+            r = await executer_chantier(d["projet"], d["consigne"], sauvegarde, reglages.modele_grand_chef,
+                                        BUDGET_CHANTIER_USD, requete_claude_code)
+            base.completer_action(a["id"], {"modifies": r["modifies"], "crees": r["crees"], "sauvegarde": str(sauvegarde)})
+            lignes = [r["resume"], f"Fichiers modifiés : {', '.join(r['modifies']) or 'aucun'}.",
+                      f"Fichiers créés : {', '.join(r['crees']) or 'aucun'}.", f"Coût : {r['cout_usd']:.3f} $."]
+            if r["refus"]:
+                lignes.append(f"Accès refusés hors du projet : {', '.join(r['refus'][:5])}.")
+            if r["erreur"]:
+                raise RefusAction("Claude Code n'a pas terminé (budget atteint ou erreur). " + " ".join(lignes))
+            return "\n".join(lignes)
         if a["type"] == "spotify_creer_playlist":
             lien = await asyncio.to_thread(spotify.creer_playlist, d["nom"], d.get("description", ""), d["uris"])
             return f"Playlist « {d['nom']} » créée avec {len(d['uris'])} titres." + (f" {lien}" if lien else "")
         raise RefusAction("type d'action inconnu")
 
+    def vue_action(ident: int) -> dict:
+        a = base.action(ident)
+        vue = {k: a[k] for k in ("id", "type", "description", "statut", "resultat")}
+        vue["annulable"] = a["statut"] == "faite" and bool(a["donnees"].get("modifies") or a["donnees"].get("crees"))
+        return vue
+
     @app.post("/api/actions/{ident}/confirmer")
     async def confirmer_action(ident: int) -> dict:
-        """Le bouton « Confirmer » de Monsieur : seule façon d'exécuter une action proposée par un agent."""
+        """Le bouton « Confirmer » de Monsieur : seule façon d'exécuter une action proposée par un agent.
+        L'action tourne en arrière-plan ; l'interface suit son état avec GET /api/actions/{id}."""
         a = base.action(ident)
         if a is None:
             raise HTTPException(status_code=404, detail="Action introuvable.")
         if not base.changer_statut_action(ident, "en_attente", "en_cours"):
             raise HTTPException(status_code=409, detail="Cette action a déjà été traitée.")
-        quand = datetime.now(FUSEAU).isoformat(timespec="seconds")
+
+        async def executer() -> None:
+            try:
+                resultat = await executer_action(a)
+                base.changer_statut_action(ident, "en_cours", "faite", resultat, datetime.now(FUSEAU).isoformat(timespec="seconds"))
+            except Exception as e:  # toute erreur termine l'action proprement
+                logging.exception("Action %s en échec", ident)
+                base.changer_statut_action(ident, "en_cours", "echec", f"Échec : {e}", datetime.now(FUSEAU).isoformat(timespec="seconds"))
+
+        tache = asyncio.create_task(executer())
+        actions_en_cours[ident] = tache
+        tache.add_done_callback(lambda _t: actions_en_cours.pop(ident, None))
         try:
-            resultat = await executer_action(a)
-            base.changer_statut_action(ident, "en_cours", "faite", resultat, quand)
-        except (RefusAction, ErreurSpotify, OSError, KeyError, ValueError) as e:
-            base.changer_statut_action(ident, "en_cours", "echec", f"Échec : {e}", quand)
+            await asyncio.wait_for(asyncio.shield(tache), timeout=20)   # les actions rapides répondent tout de suite
+        except asyncio.TimeoutError:
+            pass
+        return vue_action(ident)
+
+    @app.get("/api/actions/{ident}")
+    def lire_action(ident: int) -> dict:
+        if base.action(ident) is None:
+            raise HTTPException(status_code=404, detail="Action introuvable.")
+        return vue_action(ident)
+
+    @app.post("/api/actions/{ident}/restaurer")
+    async def restaurer_action(ident: int, confirmer: bool = False) -> dict:
+        """« Annuler les modifications » d'un chantier Claude Code (remet les fichiers d'origine)."""
         a = base.action(ident)
-        return {k: a[k] for k in ("id", "description", "statut", "resultat")}
+        if a is None:
+            raise HTTPException(status_code=404, detail="Action introuvable.")
+        d = a["donnees"]
+        if a["statut"] != "faite" or not (d.get("modifies") or d.get("crees")):
+            raise HTTPException(status_code=409, detail="Rien à annuler pour cette action.")
+        if not confirmer:
+            raise HTTPException(status_code=409, detail="Confirmation requise.")
+        texte = await asyncio.to_thread(restaurer, d["projet"], Path(d["sauvegarde"]), d.get("modifies", []), d.get("crees", []))
+        base.changer_statut_action(ident, "faite", "annulee", f"Modifications annulées : {texte}", datetime.now(FUSEAU).isoformat(timespec="seconds"))
+        return vue_action(ident)
 
     @app.post("/api/actions/{ident}/annuler")
     def annuler_action(ident: int) -> dict:
         if base.action(ident) is None:
             raise HTTPException(status_code=404, detail="Action introuvable.")
         base.changer_statut_action(ident, "en_attente", "annulee", "Annulée par Monsieur.", datetime.now(FUSEAU).isoformat(timespec="seconds"))
-        a = base.action(ident)
-        return {k: a[k] for k in ("id", "description", "statut", "resultat")}
+        return vue_action(ident)
 
     # ------------------------------------------------------------ Spotify
 

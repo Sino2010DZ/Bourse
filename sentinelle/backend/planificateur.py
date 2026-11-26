@@ -69,13 +69,13 @@ async def briefing_du_matin(secretariat, base: BaseDeDonnees, journal, notifier:
 
 async def coup_d_envoi(f1, base: BaseDeDonnees, notifier: Notifier, maintenant: datetime | None = None) -> list[str]:
     """Une notification environ 1 heure avant les qualifications, le sprint et la course de F1 (une seule fois)."""
+    maintenant = maintenant or datetime.now(FUSEAU)
     try:
-        course = await f1.prochaine()
+        course = await f1.prochaine(maintenant)
     except Exception:
         return []
     if not course:
         return []
-    maintenant = maintenant or datetime.now(FUSEAU)
     envoyees = []
     for seance in course["seances"]:
         if seance["nom"] not in ("Qualifications", "Sprint", "Course"):

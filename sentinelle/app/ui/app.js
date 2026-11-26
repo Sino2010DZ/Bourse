@@ -119,7 +119,31 @@ function blocAction(a) {
     bloc.append(annuler, confirmer);
   } else {
     const libelle = { faite: "✓ Fait", annulee: "Annulée", echec: "Échec", en_cours: "En cours…" }[a.statut] || a.statut;
-    bloc.append(el("span", "etat", a.resultat ? `${libelle} — ${a.resultat}` : libelle));
+    const etatTexte = el("span", "etat", a.resultat ? `${libelle} — ${a.resultat}` : libelle);
+    etatTexte.style.whiteSpace = "pre-wrap";
+    bloc.append(etatTexte);
+    if (a.statut === "en_cours") {
+      // Action longue (ex. Claude Code) : on suit son état toutes les 2 secondes.
+      setTimeout(async () => {
+        try { bloc.replaceWith(blocAction(await api(`/api/actions/${a.id}`))); } catch { /* réessaiera au prochain affichage */ }
+      }, 2000);
+    }
+    if (a.annulable) {
+      const annuler = el("button", "lien", "Annuler les modifications");
+      annuler.type = "button";
+      annuler.addEventListener("click", () => {
+        annuler.replaceWith(document.createTextNode("Remettre les fichiers d'origine ? "));
+        const ok = el("button", "bouton-accent", "Confirmer");
+        ok.type = "button";
+        ok.addEventListener("click", async () => {
+          ok.disabled = true;
+          try { bloc.replaceWith(blocAction(await api(`/api/actions/${a.id}/restaurer?confirmer=true`, { method: "POST" }))); }
+          catch (err) { bloc.append(el("span", "etat", err.message)); }
+        });
+        bloc.append(ok);
+      });
+      bloc.append(annuler);
+    }
   }
   return bloc;
 }
@@ -980,6 +1004,8 @@ function majReglages() {
   $("theme-sombre").value = p.theme_sombre;
   $("budget").value = p.budget_jour_usd;
   $("dossiers").value = (p.dossiers_autorises || []).join("\n");
+  $("projets").value = (p.dossiers_projets || []).join("\n");
+  $("projets-erreur").textContent = "";
   $("dossiers-erreur").textContent = "";
 }
 
@@ -1008,6 +1034,16 @@ $("dossiers").addEventListener("change", async (e) => {
     $("dossiers-erreur").textContent = "Enregistré.";
   } catch (err) {
     $("dossiers-erreur").textContent = err.message;
+  }
+});
+$("projets").addEventListener("change", async (e) => {
+  const liste = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean);
+  try {
+    await api("/api/preferences", { method: "PUT", body: JSON.stringify({ ...Themes.prefs, dossiers_projets: liste }) });
+    Themes.prefs.dossiers_projets = liste;
+    $("projets-erreur").textContent = "Enregistré.";
+  } catch (err) {
+    $("projets-erreur").textContent = err.message;
   }
 });
 $("budget").addEventListener("change", async (e) => {
