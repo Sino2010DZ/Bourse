@@ -1,0 +1,7 @@
+# Configuration Cloudflare Pages
+name = "tradevantage"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-11-01"
+# Permet au code serveur d'utiliser les outils Node.js (Stripe, Supabase…)
+# et de lire les variables secrètes via process.env.
+compatibility_flags = ["nodejs_compat"]

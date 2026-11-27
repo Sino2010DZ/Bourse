@@ -41,7 +41,7 @@ affichés par TradingView, mais les totaux et les alertes attendent.
 
 0. [Faire tourner le site sur votre ordinateur](docs/0-EN-LOCAL.md) — double-clic sur `Demarrer-Windows.bat` ou `Demarrer-Mac.command`
 1. [Créer la base de données Supabase](docs/1-SUPABASE.md)
-2. [Mettre le site en ligne sur Netlify](docs/2-NETLIFY.md)
+2. [Mettre le site en ligne sur Netlify](docs/2-NETLIFY.md) — ou [sur Cloudflare Pages](docs/2b-CLOUDFLARE.md)
 3. [Activer les notifications d’alertes](docs/3-NOTIFICATIONS.md)
 4. [Les données de marché et leur licence](docs/DONNEES.md)
 5. [Plus tard : nom de domaine, Stripe, AdSense](docs/4-PLUS-TARD.md)
@@ -67,6 +67,7 @@ src/                 le site (React)
   components/        les morceaux réutilisables (widgets, recherche, watchlist…)
   lib/symbols.ts     le catalogue des valeurs proposées
   config.ts          nom du site, limites des plans, prix, infos légales
+functions/           adaptateurs Cloudflare Pages (même code serveur)
 netlify/functions/   le serveur (prix en cache, alertes chaque minute, paiements, suppression de compte)
 supabase/migrations/ la structure de la base de données et ses règles de sécurité
 tests/               tests automatiques
