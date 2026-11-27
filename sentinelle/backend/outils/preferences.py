@@ -13,9 +13,11 @@ DEFAUTS = {
     "theme_clair": "ivoire",
     "theme_sombre": "nuit-or",
     "budget_jour_usd": 1.0,    # jauge « Quota du jour »
+    "mode": "economique",      # « economique » (Grand Chef sur Haiku) ou « puissant » (Opus)
     "dossiers_autorises": [],  # seuls dossiers que les agents Fichiers ont le droit de lire
     "dossiers_projets": [],    # projets de code que le Codeur peut modifier (après « Confirmer »)
 }
+MODES = ("economique", "puissant")
 _ID_THEME = re.compile(r"^[a-z0-9-]{1,40}$")
 
 
@@ -30,6 +32,10 @@ def valider(donnees: dict) -> dict:
         if not _ID_THEME.match(valeur):
             raise ErreurPreferences(f"Nom de thème invalide : {valeur}")
         propre[cle] = valeur
+    mode = str(donnees.get("mode", DEFAUTS["mode"]))
+    if mode not in MODES:
+        raise ErreurPreferences(f"Mode inconnu : {mode}")
+    propre["mode"] = mode
     propre["auto"] = bool(donnees.get("auto", DEFAUTS["auto"]))
     try:
         budget = float(donnees.get("budget_jour_usd", DEFAUTS["budget_jour_usd"]))

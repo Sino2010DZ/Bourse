@@ -195,14 +195,18 @@ Le Grand Chef a besoin d'une clé pour réfléchir.
 
 **Ce que ça coûte** (on paie à l'usage, rien sans utilisation) :
 
-| Rôle | Modèle | Prix par million de tokens (entrée / sortie) |
-|---|---|---|
-| Grand Chef | Claude Opus 5.5 (le plus puissant) | 4 $ / 20 $ |
-| Agents simples (dès la Phase 2) | Claude Haiku 5.5 (le moins cher) | 0,10 $ / 0,50 $ |
+Sentinelle a deux modes, à choisir dans **Réglages → Mode de réflexion** :
 
-En test réel : une simple conversation coûte **1 à 2 centimes**, une question sur vos actions **environ 5 centimes**
-(dont 4,4 pour le Grand Chef et moins de 1 pour les 5 appels aux agents).
-Avec 10 questions de bourse et 20 messages simples par jour, comptez environ 25 dollars par mois. Le compteur dans l'app vous montre la dépense du jour.
+| Mode | Grand Chef | Agents | Une question coûte environ |
+|---|---|---|---|
+| **Économique** (par défaut) | Claude Haiku 5.5 (0,10 $ / 0,50 $ par million de tokens) | Haiku 5.5 | **0,5 centime** |
+| Puissant | Claude Opus 5.5 (4 $ / 20 $ par million de tokens) | Haiku 5.5 | 2 à 5 centimes |
+
+En test réel en mode économique : « Quel temps fait-il à Genève et quand est la prochaine course de F1 ? »
+→ 2 agents consultés, réponse complète en 20 secondes, **0,54 centime**.
+Avec 30 questions par jour, comptez environ **5 francs par mois**. Passez en mode Puissant pour une question
+difficile, puis revenez en Économique. En mode économique, le Codeur (modifications de code) utilise Claude Sonnet 5.5.
+Le compteur dans l'app vous montre la dépense du jour.
 
 ## Lancer depuis le code source (pour développer)
 

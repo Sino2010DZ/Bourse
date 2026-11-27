@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Callable
 
 from cerveau import Cerveau, Demande, Reponse, cerveau_claude
 from commandants.base import Commandant
-from config import Reglages
+from config import Reglages, modeles_du_mode
 from journal import Journal, Trace, maintenant_texte
 from sections import SECTIONS
 
@@ -80,8 +81,10 @@ class GrandChef:
         journal: Journal,
         cerveau: Cerveau | None = None,
         commandants: dict[str, Commandant] | None = None,
+        mode: Callable[[], str] | None = None,
     ) -> None:
         self.reglages = reglages
+        self.mode = mode or (lambda: "economique")
         self.journal = journal
         self.cerveau = cerveau or cerveau_claude
         self.commandants = commandants or {}
@@ -155,7 +158,7 @@ class GrandChef:
                 qui="grand_chef",
                 systeme=consigne_systeme(self.commandants),
                 prompt=_prompt(historique[-self.MEMOIRE:], message, section),
-                modele=self.reglages.modele_grand_chef,
+                modele=modeles_du_mode(self.reglages, self.mode())["grand_chef"],
                 effort=self.reglages.effort_grand_chef,
                 outils=[self._outil_commandants(trace)] if self.commandants else [],
                 tours_max=4,

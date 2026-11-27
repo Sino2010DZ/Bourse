@@ -148,3 +148,27 @@ def test_tache_de_fond_pour_les_longues_questions(client):
         assert etat["resultat"]["reponse"].startswith("Monsieur, Compte rendu du Commandant Finance")
         assert client.get("/api/chat/tache/inconnue").status_code == 404
         assert client.post("/api/chat/tache", json={"message": "  "}).status_code == 422
+
+
+def test_mode_economique_par_defaut_puis_puissant(client, cerveau):
+    """Le mode économique est le mode par défaut : le Grand Chef réfléchit sur Haiku."""
+    assert client.get("/api/preferences").json()["mode"] == "economique"
+    sante = client.get("/api/sante").json()
+    assert sante["mode"] == "economique" and sante["modele_grand_chef"] == "claude-haiku-5-5"
+    client.post("/api/chat", json={"message": "Bonjour"})
+    assert cerveau.par("grand_chef")[-1].modele == "claude-haiku-5-5"
+
+    assert client.put("/api/preferences", json={"mode": "puissant"}).json()["mode"] == "puissant"
+    assert client.get("/api/sante").json()["modele_grand_chef"] == "claude-opus-5-5"
+    client.post("/api/chat", json={"message": "Bonjour"})
+    assert cerveau.par("grand_chef")[-1].modele == "claude-opus-5-5"
+    # Les agents restent toujours sur le modèle économique.
+    assert client.put("/api/preferences", json={"mode": "turbo"}).status_code == 422
+
+
+def test_modeles_du_mode():
+    from config import charger_reglages, modeles_du_mode
+
+    r = charger_reglages()
+    assert modeles_du_mode(r, "economique") == {"grand_chef": r.modele_agents, "chantier": "claude-sonnet-5-5"}
+    assert modeles_du_mode(r, "puissant") == {"grand_chef": r.modele_grand_chef, "chantier": r.modele_grand_chef}

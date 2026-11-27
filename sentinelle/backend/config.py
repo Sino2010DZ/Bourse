@@ -61,6 +61,17 @@ class Reglages:
         return cle_valide(self.cle_api)
 
 
+MODELE_CHANTIER_ECONOMIQUE = "claude-sonnet-5-5"
+
+
+def modeles_du_mode(reglages: "Reglages", mode: str) -> dict[str, str]:
+    """Économique (par défaut) : le Grand Chef réfléchit sur le modèle le moins cher.
+    Puissant : le Grand Chef et le Codeur utilisent le modèle le plus capable."""
+    if mode == "puissant":
+        return {"grand_chef": reglages.modele_grand_chef, "chantier": reglages.modele_grand_chef}
+    return {"grand_chef": reglages.modele_agents, "chantier": MODELE_CHANTIER_ECONOMIQUE}
+
+
 def cle_valide(cle: str) -> bool:
     return cle.startswith("sk-ant-") and 20 <= len(cle) <= 300 and cle.isascii() and " " not in cle
 

@@ -383,6 +383,8 @@ h2 { margin: 0; font-family: var(--police-titre); font-size: 13px; font-weight: 
 .auto-choix { display: flex; flex-wrap: wrap; gap: 16px; }
 .auto select { margin-left: 6px; background: var(--surface); border: 1px solid var(--ligne); border-radius: 8px; padding: 3px 8px; color: var(--texte); }
 .auto input[type="number"] { width: 90px; margin-left: 8px; display: inline-block; }
+.auto legend { float: left; padding: 0 0 4px; font-weight: 600; color: var(--texte); }
+.auto legend + * { clear: both; }
 
 @keyframes points { from { width: 0; } to { width: 1em; } }
 

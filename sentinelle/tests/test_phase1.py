@@ -27,7 +27,7 @@ def test_grand_chef_repond_bonjour_monsieur(client, cerveau):
     assert r.status_code == 200
     assert r.json()["reponse"] == "Bonjour Monsieur."
     demande = cerveau.par("grand_chef")[0]
-    assert demande.modele == "claude-opus-5-5"
+    assert demande.modele == "claude-haiku-5-5"
     assert "Monsieur" in demande.systeme
 
 

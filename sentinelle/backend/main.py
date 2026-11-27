@@ -40,7 +40,7 @@ from commandants.organisation import CommandantSecretariat
 from commandants.renseignement import CommandantVeille
 from commandants.sport import CommandantStade
 from commandants.finance import CommandantFinance
-from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle
+from config import DOSSIER_UI, Reglages, charger_reglages, cle_valide, enregistrer_cle, modeles_du_mode
 from grand_chef import GrandChef
 from journal import FUSEAU, Journal
 from outils.base_de_donnees import BaseDeDonnees
@@ -64,7 +64,7 @@ from outils.preferences import ErreurPreferences, Preferences
 from sections import AGENTS, SECTIONS, nom_agent
 from agents.chargeur import agents_de_section
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 
 # Origines de la fenêtre Tauri (macOS : tauri://localhost ; Windows : http(s)://tauri.localhost)
 ORIGINES_TAURI = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
@@ -151,7 +151,7 @@ def creer_app(
         "organisation": secretariat,
         "creation": CommandantAtelier(reglages, cerveau, preferences),
     }
-    chef = GrandChef(reglages, journal, cerveau, commandants)
+    chef = GrandChef(reglages, journal, cerveau, commandants, mode=lambda: preferences.lire()["mode"])
 
     @asynccontextmanager
     async def cycle_de_vie(app: FastAPI):
@@ -205,7 +205,8 @@ def creer_app(
             "version": VERSION,
             "systeme": systeme().nom(),
             "cle_api": reglages.cle_presente,
-            "modele_grand_chef": reglages.modele_grand_chef,
+            "mode": preferences.lire()["mode"],
+            "modele_grand_chef": modeles_du_mode(reglages, preferences.lire()["mode"])["grand_chef"],
             "modele_agents": reglages.modele_agents,
         }
 
@@ -527,7 +528,7 @@ def creer_app(
                 raise RefusAction("ce projet n'est plus dans Réglages › Projets")
             sauvegarde = reglages.dossier_donnees / "sauvegardes" / f"action-{a['id']}"
             base.completer_action(a["id"], {"sauvegarde": str(sauvegarde)})
-            r = await executer_chantier(d["projet"], d["consigne"], sauvegarde, reglages.modele_grand_chef,
+            r = await executer_chantier(d["projet"], d["consigne"], sauvegarde, modeles_du_mode(reglages, preferences.lire()["mode"])["chantier"],
                                         BUDGET_CHANTIER_USD, requete_claude_code)
             base.completer_action(a["id"], {"modifies": r["modifies"], "crees": r["crees"], "sauvegarde": str(sauvegarde)})
             lignes = [r["resume"], f"Fichiers modifiés : {', '.join(r['modifies']) or 'aucun'}.",

@@ -42,9 +42,9 @@ def test_chaque_agent_a_ses_outils_et_ses_regles(tmp_path):
     capture = {}
     original = grand_chef.GrandChef.__init__
 
-    def espion(self, reglages, journal, cerveau=None, commandants=None):
+    def espion(self, reglages, journal, cerveau=None, commandants=None, **kw):
         capture.update(commandants or {})
-        original(self, reglages, journal, cerveau, commandants)
+        original(self, reglages, journal, cerveau, commandants, **kw)
 
     grand_chef.GrandChef.__init__ = espion
     try:

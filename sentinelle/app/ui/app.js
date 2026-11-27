@@ -1004,6 +1004,7 @@ function majReglages() {
   $("theme-clair").value = p.theme_clair;
   $("theme-sombre").value = p.theme_sombre;
   $("budget").value = p.budget_jour_usd;
+  document.querySelectorAll('input[name="mode"]').forEach((r) => { r.checked = r.value === (p.mode || "economique"); });
   $("dossiers").value = (p.dossiers_autorises || []).join("\n");
   $("projets").value = (p.dossiers_projets || []).join("\n");
   $("projets-erreur").textContent = "";
@@ -1047,6 +1048,9 @@ $("projets").addEventListener("change", async (e) => {
     $("projets-erreur").textContent = err.message;
   }
 });
+document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", async (e) => {
+  if (e.target.checked) await Themes.enregistrer({ mode: e.target.value });
+}));
 $("budget").addEventListener("change", async (e) => {
   await Themes.enregistrer({ budget_jour_usd: Number(e.target.value) || 1 });
   afficherQuota(await api("/api/consommation"));
